@@ -52,12 +52,41 @@ git 忽略且不必保留。
 
 `app/release.keystore` **故意不入库**（`build.sh` 里密码是明文，仓库会被拷来拷去）。
 别名 `poetry`，store/key 密码同为 `poetry123`。丢了就无法覆盖升级，只能卸载重装。
-树外两份备份：`/sdcard/Download/release.keystore`、`/root/backup/release.keystore`
-（md5 72740186245ebda72a67558205f9ad30）。换机或重装 Ubuntu 前先把它捞出来。
+
+指纹：`sha256 4b095586867b49ad…`（`sha256sum` 前 16 位），PKCS12，1 个条目。
+
+副本分布（只有 `secure-backup` 分支那份在机器之外）：
+
+| 位置 | 形态 |
+|---|---|
+| `app/release.keystore` | 明文，构建用 |
+| `/sdcard/Download/release.keystore`、`/root/backup/release.keystore` | 明文，同一台机器 |
+| 私有仓库 `dragonwangjie/poetry` 分支 `secure-backup` 的 `release.keystore.enc` | AES-256-CBC / pbkdf2 200k |
+
+解密（口令不在仓库任何分支，本机存在 `/root/backup/keystore_backup_password.txt`，
+应另存进密码管理器；重装系统前务必先把它抄走）：
+
+```bash
+openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+  -in release.keystore.enc -out release.keystore -pass file:口令文件
+sha256sum release.keystore | head -c16   # 应为 4b095586867b49ad
+```
+
+已实测：从 API 下载 → 解密 → sha 一致 → `keytool -list` 能打开。
+注意 `secure-backup` 是无父提交的孤立分支，`secure-backup` 的祖先里没有源码，
+`main` 里也搜不到任何 keystore 材料（都已核对）。
 
 新克隆的仓库里没有 keystore，而 `build.sh` 发现文件不存在会**静默生成一个新的**——包能装，
 但之后 `adb install -r` 会报签名不符，看着像装机问题、其实是签名换了。所以打包前先确认
-`app/release.keystore` 的 md5 是上面那个值。
+`app/release.keystore` 的 sha256 是上面那个值。
+
+## 远端
+
+`origin = https://github.com/dragonwangjie/poetry`（私有，271 个文件约 10 MB）。
+`git push` 时通时不通：这台机器只稳定通 `api.github.com`，`github.com:443` 经常直连失败
+（实测 `git push` 第一次成功、随后 `ls-remote` 连接超时）。推不动就走 API：
+`git credential helper` 里已有令牌（`/root/.config/git/credentials`，不要打印内容），
+用 `/git/blobs` + `/git/trees` + `/git/commits` + `/git/refs` 四步提交，孤立分支传 `parents: []`。
 
 ## 语料许可
 
