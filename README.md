@@ -11,6 +11,11 @@ SKIP_DEVICE=1 bash verify.sh   # 离线三套测试，约 3s
 bash verify.sh                 # 追加 adb install + 7 项设备端渲染文本断言，约 2-4 分钟
 ```
 
+仓库不假设自己装在 `/root/poetry`：`.py` 用 `__file__` 推仓库根，`build.sh` 同理，
+所以克隆到任意目录 `bash app/build.sh` + `bash supplement/verify.sh` 都能跑。
+例外是流水线第 4 步的注译语料，默认 `/root/anno/anno.ndjson`，换机器用
+`POETRY_ANNO=/path/anno.ndjson` 指过去。
+
 `verify.sh` 的离线测试用的库是从**最终 APK 里解出来的**，不是读 `out/` 里的工作库，
 所以它证明的是即将装机那份包的行为。设备端断言读 `uiautomator` 的真实屏幕文本，
 读不到界面一律 SKIP 且返回非 0 —— SKIP 不算通过。
