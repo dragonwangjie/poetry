@@ -17,6 +17,20 @@ bash verify.sh                 # 追加 adb install + 7 项设备端渲染文本
 
 `git commit` 会自动跑 `SKIP_DEVICE=1 verify.sh`（`.git/hooks/pre-commit`）。设备端断言不在钩子里：
 它要手机连着且屏幕亮着，耗时是分钟级，发货前手动跑一次。
+## 只打包 APK（不重建数据库）— 默认路径
+
+```bash
+git clone ... && cd poetry && bash app/build.sh    # 产物 app/build/poetry.apk
+```
+
+`out/poetry_lite.db.gz`（66.9 MB）**已在版本控制里**，clone 下来就直接带库，
+不需要语料、词典、注译语料，也不需要 `repo/`。`build.sh` 找不到未压缩的
+`out/poetry_lite.db` 时，就用已提交的 `.gz` 原样打包，打包前 inflate 一遍并跑
+`PRAGMA integrity_check` + 诗数下限校验。装好后首启自己从 assets 解压，
+用户不会碰到任何"重新获取数据"。
+
+改了库（注音、注译、补录）才需要走下面的重建路径，跑完记得
+`git add -f out/poetry_lite.db.gz` 把新库一起提交。
 
 ## 重建路径
 

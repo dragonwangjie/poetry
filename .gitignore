@@ -16,6 +16,13 @@ __pycache__/
 *.db
 *.db.gz
 *.db.bak*
+# Exception, and it has to sit below *.db.gz to win (last matching pattern decides):
+# the shipped database, compressed, IS versioned (67 MB). Without it a clone cannot build an
+# apk at all, because regenerating it needs repo/ + pydict/ + /root/anno/anno.ndjson
+# (272 MB, and the anno corpus has no upstream source to re-download). `bash app/build.sh`
+# takes this file straight to assets/ when out/poetry_lite.db is absent.
+# From scratch instead: README 重建路径.
+!out/poetry_lite.db.gz
 
 # Signing identity. Deliberately NOT versioned: build.sh carries the password in plaintext
 # and this repo gets copied around, so committing the keystore would publish the key.

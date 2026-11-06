@@ -47,11 +47,33 @@ mkdir -p "$OUT/stage/assets"
 DB=/root/poetry/out/poetry_lite.db
 # A killed gzip leaves a truncated .gz that is NEWER than the db, so mtime alone cannot
 # be trusted: compare the decompressed size instead.
-need=1
-if [ -f "$GZ" ] && [ /root/poetry/out/poetry_lite.db -nt "$GZ" ]; then need=1
-elif [ -f "$GZ" ]; then
-  got=$(gzip -dc "$GZ" 2>/dev/null | wc -c)
-  [ "$got" = "$(stat -c %s "$DB")" ] && need=0 || echo "   stale/truncated gz ($got != $(stat -c %s "$DB")), recompressing"
+# If the db is missing we are building from a fresh clone: out/poetry_lite.db.gz is
+# versioned, so ship it as-is. gzip -t only validates the deflate stream, so also inflate
+# it and open it as sqlite -- a truncated or wrong-schema db would otherwise surface as a
+# 100-second silent extraction on the user's first launch.
+if [ ! -f "$DB" ]; then
+  [ -f "$GZ" ] || { echo "neither $DB nor $GZ exists -- run 'python3 build_db.py lite' first (README 重建路径)"; exit 1; }
+  echo "   no uncompressed db -- packaging the versioned $GZ"
+  gzip -t "$GZ" || { echo "gzip -t failed on $GZ"; exit 1; }
+  python3 - "$GZ" <<'PY' || exit 1
+import sqlite3, sys, gzip, tempfile, os
+raw = gzip.decompress(open(sys.argv[1], 'rb').read())
+p = os.path.join(tempfile.mkdtemp(), 'v.db')
+open(p, 'wb').write(raw)
+con = sqlite3.connect('file:%s?mode=ro' % p, uri=True)
+n = con.execute('select count(*) from poem').fetchone()[0]
+assert con.execute('pragma integrity_check').fetchone()[0] == 'ok', 'integrity_check failed'
+assert n > 79000, 'only %d poems in the db' % n
+print('   db ok: %d poems, %d bytes inflated' % (n, len(raw)))
+PY
+  need=0
+else
+  need=1
+  if [ -f "$GZ" ] && [ "$DB" -nt "$GZ" ]; then need=1
+  elif [ -f "$GZ" ]; then
+    got=$(gzip -dc "$GZ" 2>/dev/null | wc -c)
+    [ "$got" = "$(stat -c %s "$DB")" ] && need=0 || echo "   stale/truncated gz ($got != $(stat -c %s "$DB")), recompressing"
+  fi
 fi
 if [ "$need" = 1 ]; then
   echo "   gzipping database..."
