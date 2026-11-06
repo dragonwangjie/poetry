@@ -30,8 +30,8 @@ bash verify.sh                 # 追加 adb install + 7 项设备端渲染文本
 | 6 验证 | `cd supplement && bash verify.sh` | `verify: ALL GREEN` |
 
 第 2-4 步都直接原地改写 `out/poetry_lite.db`（3、4 只 `ALTER`/`UPDATE poem` 的列，不碰 `line`），
-所以第 2 步必须最先跑、第 5 步必须最后跑。`out/poetry_lite.db.bak-preanno*` 是这几步的历史快照，
-git 忽略且不必保留。
+所以第 2 步必须最先跑、第 5 步必须最后跑。以前每步留一份 `poetry_lite.db.bak-preanno*` 快照，
+2026-11-06 已清掉（6 份 721 MB，没有任何脚本读它们）；现在重跑流水线前要自己先 `cp` 一份。
 
 依赖：`aapt2` + build-tools 36（d8 / apksigner）+ android-34 `android.jar` + python3（`opencc`）。
 不用 Gradle —— `app/build.sh` 是 aapt2 / javac / d8 / 塞 assets / zipalign / 签名 七步手写。
