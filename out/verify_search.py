@@ -1,9 +1,12 @@
 """Regression battery for the verse lookup, mirroring PoemDb.searchVerses."""
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import sqlite3
 import sys
 import time
 
-DB = sys.argv[1] if len(sys.argv) > 1 else '/root/poetry/out/poetry_lite.db'
+DB = sys.argv[1] if len(sys.argv) > 1 else f'{_ROOT}/out/poetry_lite.db'
 c = sqlite3.connect(DB).cursor()
 PUNCT = set(' \t\r\n，。！？；：、,.!?;:·…—-（）()「」『』“”‘’《》〈〉【】[]')
 s2t, ofs = {}, {}

@@ -4,11 +4,14 @@ Body-tier matches are safe by construction (identical normalized text), so the p
 concentrates on the weaker tiers where a title collision could paste one poem's 译文 onto
 another. Prints DB side next to corpus side for eyeballing.
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import collections
 import sqlite3
 import sys
 
-sys.path.insert(0, '/root/poetry/supplement')
+sys.path.insert(0, f'{_ROOT}/supplement')
 from apply_anno import norm, tkey, load, SRC  # noqa: E402
 
 db = sqlite3.connect(sys.argv[1] if len(sys.argv) > 1 else '/tmp/t.db')

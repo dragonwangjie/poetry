@@ -14,6 +14,9 @@ gated cascade. Pages are cached under pages/ so re-runs are free.
 
 Usage: python3 crawl_gushiwen.py [--limit N] [--all-missing]
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import json
 import os
 import re
@@ -24,14 +27,14 @@ import time
 import html as htmlmod
 from urllib.parse import quote
 
-sys.path.insert(0, '/root/poetry/supplement')
+sys.path.insert(0, f'{_ROOT}/supplement')
 from gushiwen_so import search_candidates
 from apply_anno import bigrams, norm  # noqa: E402
 
-DB = '/root/poetry/out/poetry_lite.db'
-OUT = '/root/poetry/supplement/gushiwen.ndjson'
-CACHE = '/root/poetry/supplement/pages'
-INDEX = '/root/poetry/supplement/cat_index.json'
+DB = f'{_ROOT}/out/poetry_lite.db'
+OUT = f'{_ROOT}/supplement/gushiwen.ndjson'
+CACHE = f'{_ROOT}/supplement/pages'
+INDEX = f'{_ROOT}/supplement/cat_index.json'
 MOBILE = 'Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) ' \
          'Chrome/120 Mobile Safari/537.36'
 DESKTOP = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) ' \

@@ -8,13 +8,16 @@ Anything the local chinese-poetry checkout has is copied out unchanged into corp
 What is printed as NEED_SOURCE is what that dataset genuinely does not cover (汉乐府,
 古诗十九首, 北朝乐府, 陶渊明, 曹植, 清诗 ...) and must come from another source.
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import glob
 import json
 import os
 import sqlite3
 import sys
 
-ROOT = '/root/poetry'
+ROOT = f'{_ROOT}'
 DB = f'{ROOT}/out/poetry_lite.db'
 OUT = f'{ROOT}/supplement/corpus.json'
 

@@ -1,10 +1,12 @@
 """Inspect the object-array works.npy: element type, keys, and payload fill by sampling."""
+_ANNO = __import__('os').environ.get('POETRY_ANNO') or '/root/anno'
+_BAK = __import__('os').environ.get('POETRY_BAK') or '/root/backup'
 import collections
 import random
 
 import numpy as np
 
-w = np.load('/root/anno/works.npy', allow_pickle=True)
+w = np.load(f'{_ANNO}/works.npy', allow_pickle=True)
 print('shape', w.shape, 'dtype', w.dtype)
 el = w[0]
 print('element type:', type(el))

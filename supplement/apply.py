@@ -10,6 +10,9 @@ one code path and nothing to go stale.
 Re-runnable by design: 补录 rows are wiped first, ids are renumbered densely, then
 everything is appended from new_poems.json.
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import hashlib
 import json
 import os
@@ -20,11 +23,11 @@ import time
 import unicodedata
 from array import array
 
-sys.path.insert(0, '/root/poetry')
+sys.path.insert(0, f'{_ROOT}')
 from build_pinyin import line_pinyin, load as load_pinyin  # noqa: E402
 
-DB = '/root/poetry/out/poetry_lite.db'
-SRC = '/root/poetry/supplement/new_poems.json'
+DB = f'{_ROOT}/out/poetry_lite.db'
+SRC = f'{_ROOT}/supplement/new_poems.json'
 SUP_SRC = '补录'
 ANTHOLOGY = [('教科书选诗', '教科书选诗'), ('古诗十九首', '古诗十九首'), ('g19', '古诗十九首'),
              ('宋词三百首', '宋词三百首'), ('唐诗三百首__', '唐诗三百首'),

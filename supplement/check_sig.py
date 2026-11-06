@@ -5,6 +5,9 @@ from apply.py's own poem_sig(); every other row still carries the value add_sig.
 If the two implementations disagreed, a double attribution spanning both sources would
 stop matching and silently lose the fame tie-break.
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import hashlib
 import sqlite3
 import sys
@@ -16,7 +19,7 @@ def expect(body):
     return hashlib.md5(''.join(ch for ch in body or '' if ch not in PUNCT).encode('utf-8')).hexdigest()
 
 
-db = sqlite3.connect(sys.argv[1] if len(sys.argv) > 1 else '/root/poetry/out/poetry_lite.db')
+db = sqlite3.connect(sys.argv[1] if len(sys.argv) > 1 else f'{_ROOT}/out/poetry_lite.db')
 c = db.cursor()
 bad = 0
 for src in ('补录', '全唐诗'):

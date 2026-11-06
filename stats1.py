@@ -1,6 +1,9 @@
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import json, os, glob, re, collections
 
-R = '/root/poetry/repo'
+R = f'{_ROOT}/repo'
 files_tang = sorted(glob.glob(f'{R}/全唐诗/poet.tang.*.json'), key=lambda p: int(re.findall(r'\d+', os.path.basename(p))[-1]))
 authors_tang = json.load(open(f'{R}/全唐诗/authors.tang.json', encoding='utf-8'))
 print('tang files', len(files_tang))

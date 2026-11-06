@@ -5,11 +5,16 @@ bigram overlap, plus the first lines of both texts.
 This distinguishes a genuinely different poem (correct rejection) from an over-strict
 threshold that throws away a real match.
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
+_ANNO = __import__('os').environ.get('POETRY_ANNO') or '/root/anno'
+_BAK = __import__('os').environ.get('POETRY_BAK') or '/root/backup'
 import json
 import sqlite3
 import sys
 
-sys.path.insert(0, '/root/poetry/supplement')
+sys.path.insert(0, f'{_ROOT}/supplement')
 from apply_anno import bigrams, clean, norm, similar  # noqa: E402
 
 
@@ -21,7 +26,7 @@ def detail(a, b):
 
 
 corpus = {}
-for line in open('/root/anno/anno.ndjson', encoding='utf8'):
+for line in open(f'{_ANNO}/anno.ndjson', encoding='utf8'):
     if not line.strip():
         continue
     r = json.loads(line)
@@ -32,7 +37,7 @@ for line in open('/root/anno/anno.ndjson', encoding='utf8'):
     corpus.setdefault(norm(r.get('title') or ''), []).append(
         (str(r.get('author') or '').strip(), norm(r.get('content') or ''), tr))
 
-want = sqlite3.connect('/root/poetry/out/poetry_lite.db').execute(
+want = sqlite3.connect(f'{_ROOT}/out/poetry_lite.db').execute(
     "SELECT p.title_s, a.name_s, p.body FROM poem p JOIN author a ON a.id=p.author_id"
     " WHERE p.source='补录' AND (trans IS NULL OR trans='')").fetchall()
 print('uncovered 补录 rows: %d' % len(want))

@@ -6,13 +6,18 @@ and directories of those. A record counts as usable if any translation-ish field
 Matching against 补录 rows is by title only at this stage -- this is a ceiling estimate to
 pick a source, not the final pairing (that stays with apply_anno.py's gated cascade).
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
+_ANNO = __import__('os').environ.get('POETRY_ANNO') or '/root/anno'
+_BAK = __import__('os').environ.get('POETRY_BAK') or '/root/backup'
 import collections
 import json
 import os
 import re
 import sqlite3
 
-ROOTS = ['/root/anno', '/root/poetry/raw', '/root/poetry/sample']
+ROOTS = [f'{_ANNO}', f'{_ROOT}/raw', f'{_ROOT}/sample']
 TR_KEYS = ('trans', 'Translation', 'translation', '译文', 'translate', 'translate_s')
 NT_KEYS = ('note', 'Annotation', 'annotation', '注释')
 IN_KEYS = ('intro', 'Intro', '赏析', 'appreciation', '简介')
@@ -80,7 +85,7 @@ def scan(path):
     return rows, usable, idx
 
 
-want = sqlite3.connect('/root/poetry/out/poetry_lite.db').execute(
+want = sqlite3.connect(f'{_ROOT}/out/poetry_lite.db').execute(
     "SELECT p.title_s, a.name_s, p.body FROM poem p JOIN author a ON a.id=p.author_id"
     " WHERE p.source='补录' AND (trans IS NULL OR trans='')").fetchall()
 print('uncovered 补录 rows:', len(want))

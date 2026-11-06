@@ -1,6 +1,9 @@
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import json, os, glob, collections, re
 
-R = '/root/poetry/repo'
+R = f'{_ROOT}/repo'
 
 def head(p, n=1):
     with open(p, encoding='utf-8') as f:

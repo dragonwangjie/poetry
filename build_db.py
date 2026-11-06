@@ -1,11 +1,14 @@
 """ETL: chinese-poetry JSON -> SQLite (poet collections + feihua reverse index)."""
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import hashlib
 import json, os, glob, re, sys, sqlite3, time, collections, unicodedata
 from array import array
 from opencc import OpenCC
 
-R = '/root/poetry/repo'
-OUT = '/root/poetry/out'
+R = f'{_ROOT}/repo'
+OUT = f'{_ROOT}/out'
 MODE = sys.argv[1] if len(sys.argv) > 1 else 'core'   # core | song | lite (lite = what ships: no 元曲, no secondary indexes)
 cc = OpenCC('t2s')
 SEP = re.compile('[\n\u2028\u2029\r]')

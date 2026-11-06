@@ -8,6 +8,9 @@ Dedup rules (learned the hard way by merge.py):
  * Same text under several anthology titles (饮湖上初晴后雨 / 饮湖上初晴后雨二首·其二)
    keeps one entry, preferring the textbook title, then the anthology, then the raw dump.
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import glob
 import json
 import os
@@ -18,7 +21,7 @@ import unicodedata
 
 from opencc import OpenCC
 
-ROOT = '/root/poetry'
+ROOT = f'{_ROOT}'
 DB = f'{ROOT}/out/poetry_lite.db'
 RAW = f'{ROOT}/supplement/raw'
 OUT = f'{ROOT}/supplement/new_poems.json'

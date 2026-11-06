@@ -5,10 +5,13 @@ Run against a scratch copy of the DB:
     sed 's|^DB = .*|DB = "/tmp/anno_t.db"|' supplement/apply_anno.py > /tmp/aa.py
     python3 /tmp/aa.py --apply && python3 supplement/test_anno.py /tmp/anno_t.db
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import sqlite3
 import sys
 
-sys.path.insert(0, '/root/poetry/supplement')
+sys.path.insert(0, f'{_ROOT}/supplement')
 from apply_anno import norm, similar  # noqa: E402
 
 QIXI_YANGPU = '未会牵牛意若何，须邀织女弄金梭。年年乞与人间巧，不道人间巧已多。'

@@ -1,5 +1,8 @@
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import sqlite3
-db = sqlite3.connect('/root/poetry/out/poetry_lite.db')
+db = sqlite3.connect(f'{_ROOT}/out/poetry_lite.db')
 for pos in (0, 1, -1, -2):
     r = db.execute('SELECT cnt FROM char_pos WHERE ch="花" AND pos=?', (pos,)).fetchone()
     print('pos', pos, 'cnt', r[0] if r else 0)

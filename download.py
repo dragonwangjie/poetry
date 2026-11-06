@@ -1,7 +1,10 @@
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import json, os, sys, time, urllib.request, concurrent.futures as cf
 
-RAW = '/root/poetry/raw'
-TREE = json.load(open('/root/poetry/tree_all.json'))
+RAW = f'{_ROOT}/raw'
+TREE = json.load(open(f'{_ROOT}/tree_all.json'))
 BLOBS = {t['path']: t['sha'] for t in TREE['tree'] if t['type'] == 'blob'}
 BASE = 'https://api.github.com/repos/chinese-poetry/chinese-poetry/git/blobs/'
 HDR = {'Accept': 'application/vnd.github.raw', 'User-Agent': 'poetry-etl'}

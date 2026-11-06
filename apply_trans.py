@@ -1,24 +1,27 @@
 #!/usr/bin/env python3
 """Apply 唐诗三百首/宋词三百首 translations (auto match preferred, handwritten fallback)."""
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import glob
 import json
 import re
 import sqlite3
 
 auto = {}
-for line in open('/root/poetry/out/trans_auto.ndjson', encoding='utf8'):
+for line in open(f'{_ROOT}/out/trans_auto.ndjson', encoding='utf8'):
     d = json.loads(line)
     if d.get('trans'):
         auto[d['id']] = d
 hand = {}
-for f in sorted(glob.glob('/root/poetry/out/tr/b*.jsonl')):
+for f in sorted(glob.glob(f'{_ROOT}/out/tr/b*.jsonl')):
     for line in open(f, encoding='utf8'):
         if line.strip():
             d = json.loads(line)
             hand[d['id']] = d['trans']
 print('auto with trans', len(auto), 'handwritten', len(hand))
 
-db = sqlite3.connect('/root/poetry/out/poetry_lite.db')
+db = sqlite3.connect(f'{_ROOT}/out/poetry_lite.db')
 c = db.cursor()
 todo = c.execute("SELECT p.id FROM poem p WHERE (p.tags LIKE '%唐诗三百首%'"
                  " OR p.tags LIKE '%宋词三百首%') AND p.trans IS NULL").fetchall()

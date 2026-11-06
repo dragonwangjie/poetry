@@ -1,9 +1,12 @@
 """Pick 补录 rows whose 释文 was filled, and how to reach them from a search box."""
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import sqlite3
 import sys
 
 c = sqlite3.connect(sys.argv[1] if len(sys.argv) > 1
-                    else '/root/poetry/out/poetry_lite.db').cursor()
+                    else f'{_ROOT}/out/poetry_lite.db').cursor()
 rows = c.execute(
     "SELECT a.name_s, a.poem_count, COUNT(*),"
     " SUM(CASE WHEN p.trans IS NOT NULL AND p.trans != '' THEN 1 ELSE 0 END) AS f,"

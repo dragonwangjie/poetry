@@ -6,14 +6,17 @@ site's own search page needs a login, so candidate lookup goes through the categ
 (build_cat_index.py) instead; the interesting case there is that many of our missing rows
 share a title with a DIFFERENT poem, and only the body comparison keeps them apart.
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import json
 import sys
 
-sys.path.insert(0, '/root/poetry/supplement')
+sys.path.insert(0, f'{_ROOT}/supplement')
 from crawl_gushiwen import candidates, parse_desktop  # noqa: E402
 
-FIX = '/root/poetry/supplement/fixtures/xiangcun_siyue.html'
-INDEX = '/root/poetry/supplement/cat_index.json'
+FIX = f'{_ROOT}/supplement/fixtures/xiangcun_siyue.html'
+INDEX = f'{_ROOT}/supplement/cat_index.json'
 
 fails = []
 
@@ -40,7 +43,7 @@ check('no HTML left in any field',
 # colour split holding: green -> trans, gold-with-a-colon -> note, plain -> body.
 from crawl_gushiwen import ajax_idjm, parse_ajax  # noqa: E402
 
-ax = parse_ajax(open('/root/poetry/supplement/fixtures/ajax_yizhu.txt',
+ax = parse_ajax(open(f'{_ROOT}/supplement/fixtures/ajax_yizhu.txt',
                      encoding='utf8', errors='ignore').read())
 check('ajax body is verse only (no 译文 mixed in)',
       ax['body'].startswith('自河南经乱') and len(ax['body']) < 200
@@ -61,7 +64,7 @@ check('ajax_idjm falls back to cid when no handler', ajax_idjm('<html/>', 'ab12c
 # The anonymous search-suggest endpoint (gushiwen_so), fixture: q=田家.
 from gushiwen_so import queries as so_queries, so_rows  # noqa: E402
 
-so = so_rows(open('/root/poetry/supplement/fixtures/so_tianjia.html',
+so = so_rows(open(f'{_ROOT}/supplement/fixtures/so_tianjia.html',
                   encoding='utf8', errors='ignore').read())
 check('so rows carry id + title + author',
       so[0] == ('343a059d32c7', '田家元日', '孟浩然') and len(so) == 3, repr(so[:1]))

@@ -1,5 +1,8 @@
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import sqlite3, time, random, collections
-DB = '/root/poetry/out/poetry_lite.db'
+DB = f'{_ROOT}/out/poetry_lite.db'
 db = sqlite3.connect(DB)
 db.row_factory = sqlite3.Row
 _cache = {}

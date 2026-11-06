@@ -1,7 +1,10 @@
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import json, os, glob, re, collections, unicodedata
 from opencc import OpenCC
 cc = OpenCC('t2s')
-R = '/root/poetry/repo'
+R = f'{_ROOT}/repo'
 SEP = re.compile('[\n\u2028\u2029\r]')
 PUNCT = set('，。！？；：、「」『』“”‘’（）《》,.!?;:() 　·—…-_~*[]')
 

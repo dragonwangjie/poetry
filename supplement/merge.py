@@ -10,6 +10,9 @@ is never inserted twice.
 文言文 files are skipped on purpose: this library holds poetry, and prose paragraphs
 would break the per-clause ruby layout.
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import glob
 import json
 import os
@@ -20,7 +23,7 @@ import unicodedata
 
 from opencc import OpenCC
 
-ROOT = '/root/poetry'
+ROOT = f'{_ROOT}'
 DB = f'{ROOT}/out/poetry_lite.db'
 RAW = f'{ROOT}/supplement/raw'
 OUT = f'{ROOT}/supplement/new_poems.json'

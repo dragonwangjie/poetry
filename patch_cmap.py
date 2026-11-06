@@ -1,5 +1,8 @@
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import re
-p = '/root/poetry/build_db.py'
+p = f'{_ROOT}/build_db.py'
 s = open(p, encoding='utf-8').read()
 
 # 1. build a char-level t2s map once, and make norm() use it (identical to Android side)

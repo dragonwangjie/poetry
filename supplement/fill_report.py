@@ -1,8 +1,11 @@
 """Fill-rate report for the annotation columns, split by source."""
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import sqlite3
 import sys
 
-db = sqlite3.connect(sys.argv[1] if len(sys.argv) > 1 else '/root/poetry/out/poetry_lite.db')
+db = sqlite3.connect(sys.argv[1] if len(sys.argv) > 1 else f'{_ROOT}/out/poetry_lite.db')
 c = db.cursor()
 cols = [r[1] for r in c.execute('PRAGMA table_info(poem)')]
 fields = [x for x in ('trans', 'note', 'intro', 'prologue') if x in cols]

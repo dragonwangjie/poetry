@@ -5,6 +5,9 @@ Incremental: adds three columns to `poem` in the existing poetry_lite.db instead
 rerunning the full ETL (which rebuilds 845k lines + reverse indexes).
 Match order: normalized full text > (title, author) > title + first line.
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import glob
 import json
 import os
@@ -12,7 +15,7 @@ import re
 import sqlite3
 import sys
 
-DB = '/root/poetry/out/poetry_lite.db'
+DB = f'{_ROOT}/out/poetry_lite.db'
 DROP = set('，。！？；：、「」『』“”‘’（）《》,.!?;:() 　·—…-_~*[]\r\n\t ')
 TAG = re.compile(r'<[^>]+>')
 

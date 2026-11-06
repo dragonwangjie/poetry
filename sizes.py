@@ -1,5 +1,8 @@
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import json
-d = json.load(open('/root/poetry/tree_all.json'))
+d = json.load(open(f'{_ROOT}/tree_all.json'))
 B = [t for t in d['tree'] if t['type'] == 'blob']
 
 def sz(pre, excl=()):

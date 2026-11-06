@@ -1,5 +1,8 @@
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import sqlite3, time, json, sys
-DB = '/root/poetry/out/poetry_core.db'
+DB = f'{_ROOT}/out/poetry_core.db'
 db = sqlite3.connect(DB)
 db.row_factory = sqlite3.Row
 

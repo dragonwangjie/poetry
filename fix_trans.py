@@ -5,6 +5,11 @@ title+author matching is unsafe for 词牌 (one tune, many poems), so re-derive 
 anthology translation from the source by text similarity only. Anything the source
 does not contain falls back to the handwritten files; poems with neither become gaps.
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
+_ANNO = __import__('os').environ.get('POETRY_ANNO') or '/root/anno'
+_BAK = __import__('os').environ.get('POETRY_BAK') or '/root/backup'
 import collections
 import difflib
 import glob
@@ -24,7 +29,7 @@ def akey(a):
     return ALIAS.get(norm(a), norm(a))
 
 
-src = [json.loads(l) for l in open('/root/anno/anno.ndjson', encoding='utf8')]
+src = [json.loads(l) for l in open(f'{_ANNO}/anno.ndjson', encoding='utf8')]
 for r in src:
     r['_b'] = norm(r['content'])
 by_body = collections.defaultdict(list)
@@ -37,7 +42,7 @@ for r in src:
         by_head[r['_b'][:6]].append(r)
 
 hand = {}
-for f in sorted(glob.glob('/root/poetry/out/tr/*.jsonl')):
+for f in sorted(glob.glob(f'{_ROOT}/out/tr/*.jsonl')):
     for l in open(f, encoding='utf8'):
         if l.strip():
             d = json.loads(l)
@@ -62,7 +67,7 @@ def find(nb, na):
     return (best, 'fuzzy%.2f' % score) if score >= 0.85 else (None, 'none')
 
 
-db = sqlite3.connect('/root/poetry/out/poetry_lite.db')
+db = sqlite3.connect(f'{_ROOT}/out/poetry_lite.db')
 c = db.cursor()
 rows = c.execute("SELECT p.id,p.title_s,a.name_s,p.body,p.trans FROM poem p"
                  " JOIN author a ON a.id=p.author_id WHERE p.tags LIKE '%唐诗三百首%'"
@@ -104,7 +109,7 @@ print('match sources', dict(stat))
 print('gaps', len(gaps))
 for g in gaps:
     print('   id=%d %s / %s' % g)
-with open('/root/poetry/out/gaps.ndjson', 'w', encoding='utf8') as w:
+with open(f'{_ROOT}/out/gaps.ndjson', 'w', encoding='utf8') as w:
     for pid, title, author in gaps:
         b = c.execute('SELECT body FROM poem WHERE id=?', (pid,)).fetchone()[0]
         w.write(json.dumps({'id': pid, 't': title, 'a': author,

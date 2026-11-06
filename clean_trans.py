@@ -6,6 +6,11 @@ and for common titles. Walk every poem that carries trans/note/intro, re-match i
 the annotation source by text alone, then either overwrite with the confirmed payload
 or clear the fields. Handwritten translations (keyed by our own poem id) are exempt.
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
+_ANNO = __import__('os').environ.get('POETRY_ANNO') or '/root/anno'
+_BAK = __import__('os').environ.get('POETRY_BAK') or '/root/backup'
 import collections
 import difflib
 import glob
@@ -24,7 +29,7 @@ def akey(a):
     return ALIAS.get(norm(a), norm(a))
 
 
-payload = [json.loads(l) for l in open('/root/anno/anno.ndjson', encoding='utf8')
+payload = [json.loads(l) for l in open(f'{_ANNO}/anno.ndjson', encoding='utf8')
            if ('"trans": "' in l or '"note": "' in l or '"intro": "' in l)]
 for r in payload:
     r['_b'] = norm(r['content'])
@@ -38,13 +43,13 @@ for r in payload:
 print('source records with payload', len(payload))
 
 hand = {}
-for f in glob.glob('/root/poetry/out/tr/*.jsonl'):
+for f in glob.glob(f'{_ROOT}/out/tr/*.jsonl'):
     for l in open(f, encoding='utf8'):
         if l.strip():
             d = json.loads(l)
             hand[d['id']] = d['trans']
 
-db = sqlite3.connect('/root/poetry/out/poetry_lite.db')
+db = sqlite3.connect(f'{_ROOT}/out/poetry_lite.db')
 c = db.cursor()
 rows = c.execute('SELECT p.id,a.name_s,p.title_s,p.body,p.trans,p.note,p.intro FROM poem p'
                  ' JOIN author a ON a.id=p.author_id WHERE p.trans IS NOT NULL'
@@ -97,4 +102,4 @@ for tag in ('唐诗三百首', '宋词三百首'):
 c.execute('VACUUM')
 db.commit()
 import os
-print('db MB', round(os.path.getsize('/root/poetry/out/poetry_lite.db') / 1e6, 1))
+print('db MB', round(os.path.getsize(f'{_ROOT}/out/poetry_lite.db') / 1e6, 1))

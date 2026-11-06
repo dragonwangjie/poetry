@@ -3,6 +3,11 @@
 Dry run only: prints hit counts per match tier, mirroring the cascade used by
 add_translation2.py (normalized full text > (title, author) > title > first line).
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
+_ANNO = __import__('os').environ.get('POETRY_ANNO') or '/root/anno'
+_BAK = __import__('os').environ.get('POETRY_BAK') or '/root/backup'
 import json
 import re
 import sqlite3
@@ -10,8 +15,8 @@ import sys
 
 DROP = set('，。！？；：、「」『』“”‘’（）《》,.!?;:() 　·—…-_~*[]\r\n\t ')
 TAG = re.compile(r'<[^>]+>')
-ANNO = sys.argv[1] if len(sys.argv) > 1 else '/root/anno/anno.ndjson'
-DB = sys.argv[2] if len(sys.argv) > 2 else '/root/poetry/out/poetry_lite.db'
+ANNO = sys.argv[1] if len(sys.argv) > 1 else f'{_ANNO}/anno.ndjson'
+DB = sys.argv[2] if len(sys.argv) > 2 else f'{_ROOT}/out/poetry_lite.db'
 
 
 def norm(s):

@@ -10,6 +10,9 @@ and fame is only consulted then. The value is only compared against its own colu
 so the app never recomputes it and no shared normalisation is needed. Punctuation is
 stripped (same set as PoemDb.PUNCT) so copies differing only in punctuation match.
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import hashlib, sqlite3, sys
 PUNCT = set(' \t\r\n，。！？；：、,.!?;:·…—-（）()「」『』“”‘’《》〈〉【】[]')
 def main(path):
@@ -37,4 +40,4 @@ def main(path):
     print('integrity:', c.execute('PRAGMA integrity_check').fetchone()[0])
     db.close()
 if __name__ == '__main__':
-    main(sys.argv[1] if len(sys.argv) > 1 else '/root/poetry/out/poetry_lite.db')
+    main(sys.argv[1] if len(sys.argv) > 1 else f'{_ROOT}/out/poetry_lite.db')

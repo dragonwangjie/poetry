@@ -11,6 +11,11 @@ corpora differ in title style and wording:
   4. (first-10-chars of body, author)
   5. title alone, only when the title is unique in both corpora
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
+_ANNO = __import__('os').environ.get('POETRY_ANNO') or '/root/anno'
+_BAK = __import__('os').environ.get('POETRY_BAK') or '/root/backup'
 import collections
 import glob
 import json
@@ -19,8 +24,8 @@ import re
 import sqlite3
 import sys
 
-DB = '/root/poetry/out/poetry_lite.db'
-SRC = '/root/anno/anno.ndjson'
+DB = f'{_ROOT}/out/poetry_lite.db'
+SRC = f'{_ANNO}/anno.ndjson'
 DROP = set('，。！？；：、「」『』“”‘’（）《》,.!?;:() 　·—…-_~*[]\r\n\t ')
 TAG = re.compile(r'<[^>]+>')
 SEQ = re.compile(r'(?:其[一二三四五六七八九十百\d]+|之一|之二|其一)$')

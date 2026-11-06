@@ -5,15 +5,18 @@ Word segmentation is forward maximum matching against the pinyin-pro modern dict
 polyphones follow the phrase reading (还 huán in 还乡, hái as a lone character). The
 result lands in poem.title_py and poem.py, one pinyin line per body line.
 """
+_ROOT = __import__('os').path.dirname(__import__('os').path.abspath(__file__))
+if __import__('os').path.basename(_ROOT) == 'supplement':
+    _ROOT = __import__('os').path.dirname(_ROOT)
 import json
 import re
 import sqlite3
 import sys
 import time
 
-DB = '/root/poetry/out/poetry_lite.db'
-DICT = '/root/poetry/pydict/modern-dict.json'
-SINGLE_JS = '/root/poetry/pydict/pinyin_dict_withtone.js'
+DB = f'{_ROOT}/out/poetry_lite.db'
+DICT = f'{_ROOT}/pydict/modern-dict.json'
+SINGLE_JS = f'{_ROOT}/pydict/pinyin_dict_withtone.js'
 HAN = re.compile(r'[㐀-䶿一-鿿豈-﫿]')
 # Readings that the dictionary mis-handles often enough to be worth pinning.
 OVERRIDE = {
