@@ -1,0 +1,34 @@
+# Build products and derived data: the whole tree is 1.6 GB and every byte of the
+# excluded stuff can be regenerated (build.sh / build_db scripts) or is downloaded input.
+# out/* rather than out/ so the one file the verification entry point needs can be
+# re-included below (git cannot un-ignore anything inside an ignored directory).
+out/*
+!out/verify_search.py
+app/build/
+repo/
+pydict/
+__pycache__/
+*.pyc
+
+# Binary artifacts. The apk is reproducible from source + db; keep the shipped copies on
+# /sdcard/Download instead of in history.
+*.apk
+*.db
+*.db.gz
+*.db.bak*
+
+# Signing identity. Deliberately NOT versioned: build.sh carries the password in plaintext
+# and this repo gets copied around, so committing the keystore would publish the key.
+# Losing it means every future install must uninstall the old app first (same signature
+# required for upgrades), so there are two copies outside this tree:
+#   /sdcard/Download/release.keystore   (device storage)
+#   /root/backup/release.keystore       (host side)
+release.keystore
+*.keystore
+*.jks
+
+# Scratch
+*.log
+/tmp/
+# Downloaded upstream corpus archive; the unpacked tree lives in repo/ (also ignored).
+repo.tar.gz

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="AppTheme" parent="@android:style/Theme.Material.Light.DarkActionBar">
+        <item name="android:windowBackground">@android:color/white</item>
+        <item name="android:textColorLink">#8B5A2B</item>
+    </style>
+    <color name="ink">#2B2B2B</color>
+    <color name="seal">#8B3A2B</color>
+    <color name="paper">#FBF7EF</color>
+</resources>

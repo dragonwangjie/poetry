@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">诗海</string>
+    <string name="tab_authors">诗人</string>
+    <string name="tab_feihua">飞花令</string>
+    <string name="search_hint">搜诗人 / 诗名 / 诗句，如 李白、静夜思、床前明月光</string>
+    <string name="char_hint">输入一个字，如 月</string>
+</resources>
