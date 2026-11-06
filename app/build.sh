@@ -1,12 +1,15 @@
 #!/bin/bash
 # Build the Poetry APK without Gradle: aapt2 + javac + d8 + zipalign + apksigner
 set -u
+# Everything is resolved from this script's own location, not from a hardcoded /root/poetry:
+# a clone anywhere on disk must build. ROOT is the repo root (app/ lives inside it).
+SRC="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(dirname "$SRC")"
 BT=/opt/android-sdk/build-tools/36.0.0
 AAPT2=/usr/bin/aapt2
 PLATFORM=/opt/android-sdk/platforms/android-34/android.jar
-SRC=/root/poetry/app
 OUT=$SRC/build
-GZ=/root/poetry/out/poetry_lite.db.gz
+GZ=$ROOT/out/poetry_lite.db.gz
 KS=$SRC/release.keystore
 KS_PASS=poetry123
 
@@ -44,7 +47,7 @@ ls -la "$OUT/dex"
 echo "== [5/7] assemble apk"
 cp "$OUT/apk/base.apk" "$OUT/apk/poetry.unsigned.apk"
 mkdir -p "$OUT/stage/assets"
-DB=/root/poetry/out/poetry_lite.db
+DB=$ROOT/out/poetry_lite.db
 # A killed gzip leaves a truncated .gz that is NEWER than the db, so mtime alone cannot
 # be trusted: compare the decompressed size instead.
 # If the db is missing we are building from a fresh clone: out/poetry_lite.db.gz is

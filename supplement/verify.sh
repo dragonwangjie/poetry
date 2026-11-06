@@ -16,7 +16,7 @@ run_suite() {  # run_suite <label> <command...>
 }
 cd "$(dirname "$0")"
 DB=${DB:-/tmp/inapk13.db}
-APK=${APK:-/root/poetry/app/build/poetry.apk}
+APK=${APK:-../app/build/poetry.apk}   # relative: verify.sh has already cd'd to its own dir
 status=0
 
 if [ ! -f "$DB" ]; then
