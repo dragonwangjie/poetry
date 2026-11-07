@@ -194,6 +194,12 @@ public class PoemDb {
         return r;
     }
 
+    /**
+     * Lines containing `one`. With pos != null the result honours it strictly: 异体字 variants are
+     * still tried at that position, but an empty position yields an empty array instead of
+     * falling back to "anywhere". The 飞花令 dial promises 第N字, and a silently widened pool lets
+     * the machine deal a line that breaks the very rule the player's own answer is graded on.
+     */
     public int[] findLines(String one, Integer pos) {
         List<String> vs = variants(one);
         if (pos != null) {
@@ -201,6 +207,7 @@ public class PoemDb {
                 int[] p = postings(v, pos);
                 if (p.length > 0) return p;
             }
+            return new int[0];
         }
         for (String v : vs) {
             int[] p = postings(v, null);
