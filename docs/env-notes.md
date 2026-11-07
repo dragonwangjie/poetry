@@ -17,3 +17,8 @@
 ## 出网限制
 只通 `api.github.com` 与 `github.com`（git 协议）。`objects.githubusercontent.com`（
 REST blob 下载的重定向目标）被拒，所以别用 `curl` 拉 blob 验证，用 `git clone` 后本地比哈希。
+
+## git 对 github.com 推不动时用 HTTP/1.1
+`git push` 会报 `GnuTLS recv error (-110)` 或 `Failed to connect to github.com port 443`，
+同时 `curl https://github.com/` 却是 200 —— 是 HTTP/2 + 大 postbuffer 在这条链路上断 TLS。
+本仓库已 `git config http.version HTTP/1.1`（仅 local，不随 clone 传播），新机器上再遇到就手动设一次。
