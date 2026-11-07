@@ -1,6 +1,14 @@
 # 构建/重建出货库所需的全部输入，2026-11-06 实测哈希。
 # out/poetry_lite.db.gz 本身在版本控制里；其余四项在仓库外，缺任一项则只能走 README 重建路径的前 3 步。
-# anno.ndjson 无上游来源，丢了注译/注释不可再生，已另存两处。
+# anno.ndjson 无上游来源，丢了注译/注释不可再生。
+#
+# 2026-11-07 更正此前的"已另存两处"说法：/root 与 /sdcard 是同一块 dm-62（df 实测同一设备号），
+# 所以下面这些副本只防"proot rootfs 被清/被重装"，不防存储损坏。真要防后者得导出到手机之外。
+# gzip 后 19.2 MB，四处落点（gunzip 后 sha256 均为下面这行 d651dfa4…）：
+#   /root/anno/anno.ndjson          工作位置，脚本默认读取
+#   /root/backup/anno.ndjson        未压缩备份
+#   /root/backup/anno.ndjson.gz     压缩备份
+#   /sdcard/Download/anno.ndjson.gz 压缩备份，重装 proot 后仍可直接访问
 d651dfa4d4d2e90019bbd9dc6456d2a7eb79a83e17b4dd305ab93fab6573bdd6  /root/backup/anno.ndjson
 e7219e3c2955015d1cc37370d5e3a5d174beb5d00bb5d5713a00922cf5f5add5  /root/poetry/repo.tar.gz
 62c562a2d54fb934a722f08d01757d072537c7ab27b38a97a02fc94b7bdbb0e1  pydict/modern-dict.json
