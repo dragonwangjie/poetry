@@ -46,8 +46,13 @@ grab() {   # grab <query> -> /tmp/w.xml
       adb shell am start -n $PKG/.MainActivity >/dev/null 2>&1
     fi
     sleep 3
+    # Drop both copies first: if `dump` fails silently or `pull` cannot read it, the previous
+    # iteration's /tmp/w.xml would still be sitting there, still containing $PKG, and the grep
+    # below would report "window reachable" while expect() graded yesterday's screen text.
+    adb shell rm -f /sdcard/w.xml >/dev/null 2>&1
+    rm -f /tmp/w.xml
     adb shell uiautomator dump /sdcard/w.xml >/dev/null 2>&1
-    adb pull /sdcard/w.xml /tmp/w.xml >/dev/null 2>&1
+    adb pull /sdcard/w.xml /tmp/w.xml >/dev/null 2>&1 || continue
     grep -q "$PKG" /tmp/w.xml 2>/dev/null && return 0
   done
   return 1
