@@ -22,3 +22,6 @@ REST blob 下载的重定向目标）被拒，所以别用 `curl` 拉 blob 验�
 `git push` 会报 `GnuTLS recv error (-110)` 或 `Failed to connect to github.com port 443`，
 同时 `curl https://github.com/` 却是 200 —— 是 HTTP/2 + 大 postbuffer 在这条链路上断 TLS。
 本仓库已 `git config http.version HTTP/1.1`（仅 local，不随 clone 传播），新机器上再遇到就手动设一次。
+
+本局实测：即使设了 HTTP/1.1，`git push` / `git clone` 仍会随机出现 `Failed to connect to github.com port 443`
+（同一时刻 `git ls-remote` 可能成功）。这是链路抖动，不是仓库问题——直接重试，一般 2~3 次内成功。
