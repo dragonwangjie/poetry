@@ -94,7 +94,23 @@ echo "== [6/7] zipalign"
 python3 "$SRC/zipalign.py" "$OUT/apk/poetry.unsigned.apk" "$OUT/apk/poetry.aligned.apk" || exit 1
 
 echo "== [7/7] sign"
+# The keystore is deliberately not versioned (build.sh carries the password in plaintext).
+# Regenerating it silently would produce an APK that installs fine but CANNOT replace an
+# already-installed app (INSTALL_FAILED_UPDATE_INCOMPATIBLE), so look for a backup first and
+# shout if we really have to start a new signing identity.
 if [ ! -f "$KS" ]; then
+  for cand in "${POETRY_KS:-}" /root/backup/release.keystore /sdcard/Download/release.keystore; do
+    if [ -n "$cand" ] && [ -f "$cand" ]; then
+      cp "$cand" "$KS" || exit 1
+      echo "   restored signing key from $cand"
+      break
+    fi
+  done
+fi
+if [ ! -f "$KS" ]; then
+  echo "   WARNING: no release.keystore anywhere -> generating a NEW signing key."
+  echo "   This APK will NOT upgrade an existing install (uninstall first, or restore the"
+  echo "   key from /root/backup/ or /sdcard/Download/ and re-run)."
   keytool -genkeypair -v -keystore "$KS" -storepass "$KS_PASS" -keypass "$KS_PASS" \
     -alias poetry -keyalg RSA -keysize 2048 -validity 10000 \
     -dname "CN=Poetry, OU=Dev, O=Poetry, L=City, S=State, C=CN" >/dev/null 2>&1 || exit 1
