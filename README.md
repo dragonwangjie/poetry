@@ -149,8 +149,8 @@ gh secret set POETRY_KS_PASS < <(echo poetry123)
 
 ```bash
 rm -rf /tmp/ci-sim && git clone /root/poetry /tmp/ci-sim && cd /tmp/ci-sim
-bash ci/setup_sdk.sh
-python3 ci/check_db.py && bash ci/version.sh && bash app/build.sh \
+bash ci/setup_sdk.sh && python3 ci/check_db.py && bash ci/version.sh && bash app/build.sh \
+  && bash ci/check_apk.sh 21 && SKIP_DEVICE=1 bash supplement/verify.sh
 ```
 
 ## 语料许可
