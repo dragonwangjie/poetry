@@ -1,0 +1,108 @@
+name: Build APK
+
+# Two ways in:
+#   1. Actions tab -> "Build APK" -> Run workflow (manual). Uploads the APK as a workflow
+#      artifact; tick make_release to also publish it as a GitHub Release.
+#   2. git push origin v1.19    (tags matching v*.* / v*.*.* / release-*)
+#      Always builds and publishes a GitHub Release carrying the APK.
+#
+# The database is NOT rebuilt here. out/poetry_lite.db.gz is versioned in the repo (~70 MB)
+# precisely so that a clone can produce an APK without the 272 MB upstream corpus; build.sh
+# packages that file straight into assets/. CI only verifies it before spending build minutes.
+on:
+  workflow_dispatch:
+    inputs:
+      make_release:
+        description: 'Also publish a GitHub Release with this APK'
+        type: boolean
+        default: false
+  push:
+    tags:
+      - 'v*.*'
+      - 'v*.*.*'
+      - 'release-*'
+
+permissions:
+  contents: write      # create the release and upload the APK asset
+
+env:
+  # Optional but strongly recommended. Without them build.sh mints a throwaway key and the APK
+  # cannot replace an existing install (INSTALL_FAILED_UPDATE_INCOMPATIBLE).
+  #   POETRY_KEYSTORE   base64 -w0 app/release.keystore | gh secret set POETRY_KEYSTORE
+  #   POETRY_KS_PASS    the store/key password build.sh should use
+  POETRY_KEYSTORE: ${{ secrets.POETRY_KEYSTORE }}
+  POETRY_KS_PASS: ${{ secrets.POETRY_KS_PASS }}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      # fetch-depth 0 so ci/check_release_tag.sh can compare an existing tag against this commit.
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # No Gradle: app/build.sh drives aapt2 + javac + d8 + zipalign + apksigner directly.
+      - uses: android-actions/setup-android@v3
+
+      # build.sh wants $ANDROID_HOME/platforms/android-34/android.jar plus any build-tools.
+      - name: Install SDK packages
+        run: yes | sdkmanager --install "platforms;android-34" "platform-tools"
+
+      - name: Check the bundled database
+        run: python3 ci/check_db.py
+
+      - name: Restore keystore
+        if: env.POETRY_KEYSTORE != ''
+        run: |
+          set -e
+          printf '%s' "$POETRY_KEYSTORE" | base64 -d > app/release.keystore
+          ls -l app/release.keystore
+
+      - name: Resolve version
+        id: ver
+        run: bash ci/version.sh
+
+      - name: Build APK
+        run: bash app/build.sh
+
+      - name: Check APK contents
+        run: bash ci/check_apk.sh "${{ steps.ver.outputs.code }}"
+
+      # Runs after the build because verify.sh pulls its test database out of the built APK.
+      - name: Offline test suites
+        run: SKIP_DEVICE=1 bash supplement/verify.sh
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: poetry-${{ steps.ver.outputs.name }}
+          path: app/build/poetry.apk
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Warn about a throwaway signing key
+        if: always()
+        run: |
+          if [ ! -f app/release.keystore ]; then
+            echo "::warning::no POETRY_KEYSTORE secret -- this APK was signed with a freshly generated key and cannot upgrade an existing install (uninstall first, or set the secret and rerun)"
+          fi
+
+      - name: Check the release tag
+        if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.make_release == 'true'
+        run: bash ci/check_release_tag.sh "${{ steps.ver.outputs.tag }}"
+
+      - name: Publish GitHub Release with the APK
+        if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.make_release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: Poetry ${{ steps.ver.outputs.name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: app/build/poetry.apk

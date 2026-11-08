@@ -5,13 +5,21 @@ set -u
 # a clone anywhere on disk must build. ROOT is the repo root (app/ lives inside it).
 SRC="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(dirname "$SRC")"
-BT=/opt/android-sdk/build-tools/36.0.0
-AAPT2=/usr/bin/aapt2
-PLATFORM=/opt/android-sdk/platforms/android-34/android.jar
+# Toolchain paths are resolved, not hardcoded, so the same script builds on the phone's proot
+# box AND on GitHub Actions, where the SDK lives under $ANDROID_HOME instead of /opt/android-sdk.
+# aapt2: prefer one from PATH (that is what local builds have always used), fall back to the
+# build-tools copy for CI images that do not ship a standalone aapt2.
+SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/opt/android-sdk}}"
+[ -d "$SDK" ] || SDK=/opt/android-sdk
+BT="${BT:-$(ls -d "$SDK"/build-tools/* 2>/dev/null | sort -V | tail -1)}"
+[ -n "$BT" ] && [ -d "$BT" ] || { echo "no build-tools under $SDK -- set ANDROID_HOME"; exit 1; }
+AAPT2="${AAPT2:-$(command -v aapt2 || echo "$BT/aapt2")}"
+PLATFORM="${PLATFORM:-$SDK/platforms/android-34/android.jar}"
+[ -f "$PLATFORM" ] || { echo "missing $PLATFORM -- run: sdkmanager 'platforms;android-34'"; exit 1; }
 OUT=$SRC/build
 GZ=$ROOT/out/poetry_lite.db.gz
 KS=$SRC/release.keystore
-KS_PASS=poetry123
+KS_PASS="${POETRY_KS_PASS:-poetry123}"
 
 rm -rf "$OUT"
 mkdir -p "$OUT/obj" "$OUT/dex" "$OUT/gen" "$OUT/apk"
@@ -20,12 +28,21 @@ echo "== [1/7] compile resources"
 $AAPT2 compile --dir "$SRC/res" -o "$OUT/res.zip" || exit 1
 
 echo "== [2/7] link resources"
+# The version numbers come from AndroidManifest.xml -- that is the file release bumps -- and are
+# passed explicitly. build.sh used to hardcode "--version-code 1 --version-name 1.0" here, which
+# read like it decided the version while the manifest actually won; an APK that silently claims
+# version 1 cannot be installed as an upgrade over the real one, so make the source of truth
+# explicit instead of relying on which flag aapt2 happens to prefer.
+VC=$(sed -n 's/.*android:versionCode="\([0-9]*\)".*/\1/p' "$SRC/AndroidManifest.xml" | head -1)
+VN=$(sed -n 's/.*android:versionName="\([^"]*\)".*/\1/p' "$SRC/AndroidManifest.xml" | head -1)
+[ -n "$VC" ] && [ -n "$VN" ] || { echo "cannot read versionCode/versionName from AndroidManifest.xml"; exit 1; }
+echo "   version: $VN ($VC)"
 $AAPT2 link -o "$OUT/apk/base.apk" \
   -I "$PLATFORM" \
   --manifest "$SRC/AndroidManifest.xml" \
   --java "$OUT/gen" \
   --min-sdk-version 24 --target-sdk-version 34 \
-  --version-code 1 --version-name 1.0 \
+  --version-code "$VC" --version-name "$VN" \
   "$OUT/res.zip" || exit 1
 
 echo "== [3/7] javac"

@@ -10,7 +10,12 @@ import re
 import sqlite3
 import sys
 
-SRC = os.environ.get('POETRY_SRC', '/root/poetry/app/src/com/poetry/app/')
+# Derived from this file's own location, not a hardcoded /root/poetry: on GitHub Actions the
+# checkout lands in /home/runner/work/<repo>/<repo>, so an absolute default made this suite pass
+# locally and die in CI. POETRY_SRC still overrides it.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+SRC = os.environ.get('POETRY_SRC',
+                     os.path.join(os.path.dirname(_HERE), 'app', 'src', 'com', 'poetry', 'app') + os.sep)
 DB = sys.argv[1] if len(sys.argv) > 1 else '/root/poetry/out/poetry_lite.db'
 fails = []
 
