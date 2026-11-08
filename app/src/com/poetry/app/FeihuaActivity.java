@@ -47,8 +47,6 @@ public class FeihuaActivity extends Activity {
 
     private DialView dial;
     private EditText charInput;
-    private EditText askerName;
-    private EditText answerName;
     private EditText answerInput;
     private TextView counter;
     private Button startBtn;
@@ -94,7 +92,6 @@ public class FeihuaActivity extends Activity {
 
         outer.addView(head());
         outer.addView(charRow());
-        outer.addView(nameRow());
         outer.addView(dialBlock());
         outer.addView(answerRow());
 
@@ -172,21 +169,6 @@ public class FeihuaActivity extends Activity {
         r.addView(btn("换字", new View.OnClickListener() {
             public void onClick(View v) { randomChar(); }
         }));
-        return r;
-    }
-
-    private View nameRow() {
-        LinearLayout r = row(dp(2), dp(6));
-        r.addView(tv(13f, 0xFF6B5B45, "出句者"));
-        askerName = edit("系统", 8);
-        LinearLayout.LayoutParams a = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        a.setMargins(dp(6), 0, dp(10), 0);
-        r.addView(askerName, a);
-        r.addView(tv(13f, 0xFF6B5B45, "答句者"));
-        answerName = edit("我", 8);
-        LinearLayout.LayoutParams n = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
-        n.setMargins(dp(6), 0, 0, 0);
-        r.addView(answerName, n);
         return r;
     }
 
@@ -534,14 +516,12 @@ public class FeihuaActivity extends Activity {
         if (!log.isEmpty()) logList.setSelection(log.size() - 1);
     }
 
-    private String asker() { return orDefault(askerName.getText().toString(), "出句者"); }
+    // The two name boxes are gone. They only ever held hints (「系统」/「我」were never typed), so
+    // what the screen actually rendered was the fallback below -- fixing the labels here keeps the
+    // score line and log wording byte-identical to before.
+    private String asker() { return "出句者"; }
 
-    private String answerName() { return orDefault(answerName.getText().toString(), "答句者"); }
-
-    private String orDefault(String s, String d) {
-        String t = s.trim();
-        return t.length() == 0 ? d : t;
-    }
+    private String answerName() { return "答句者"; }
 
     private char norm1(String c) {
         String v = db.normalize(c);

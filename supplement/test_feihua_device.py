@@ -103,6 +103,10 @@ if '认输' not in texts:
     bad('中枢缺「认输」')
 if '停止' in texts:
     bad('「停止」按钮应已移除')
+# the 出句者/答句者 boxes are gone; as EditTexts their hints used to show up as their own nodes
+for gone in ('系统', '我'):
+    if gone in texts:
+        bad('「%s」输入框应已移除' % gone)
 
 # ---------------------------------------------------------------- press 开始 and read
 tap(hub_xml, '开始')

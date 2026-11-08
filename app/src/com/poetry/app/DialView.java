@@ -51,6 +51,7 @@ public class DialView extends View {
     private String[] labels = {"任意", "第1字", "第2字", "第3字", "第4字", "第5字", "第6字", "第7字"};
     private float handAngle = 0f;                   // degrees clockwise from 12 o'clock
     private int selected = 0;
+    private int landing = 0;                        // where a spin in flight will land; not highlighted yet
     private int countdown = 0;                       // >0 while a timed spin runs
     private float density = 1f;
     private Listener listener;
@@ -135,7 +136,8 @@ public class DialView extends View {
      * to wedge slot, and the hand lands on exactly slot*STEP mod 360 either way.
      */
     private void animateTo(final int slot, final long ms, float factor, int turns) {
-        selected = slot;
+        landing = slot;                // commit to `selected` only in settle(), so the wedge does
+                                       // not light up before the hand actually gets there
         float delta = ((slot * STEP - handAngle) % 360f + 360f) % 360f;
         float target = handAngle + turns * 360f + delta;
         if (anim != null && anim.isRunning()) anim.cancel();
@@ -182,6 +184,7 @@ public class DialView extends View {
         settled = true;
         clearSettleTimer();
         countdown = 0;
+        selected = landing;              // the highlight moves here, when the hand arrives
         invalidate();
         if (onDone != null) { SpinDone cb = onDone; onDone = null; cb.onSettled(selected); }
     }
@@ -239,14 +242,6 @@ public class DialView extends View {
 
         drawHand(c, cx, cy, outer, inner);
 
-        // top pointer: a fixed marker where the hand is read
-        Path p = new Path();
-        p.moveTo(cx, cy - outer + 2f * density);
-        p.lineTo(cx - 7f * density, cy - outer - 12f * density);
-        p.lineTo(cx + 7f * density, cy - outer - 12f * density);
-        p.close();
-        fill.setColor(0xFF2B2B2B);
-        c.drawPath(p, fill);
     }
 
     /** The sweeping hand, plus the seconds badge riding on it while the countdown runs. */
@@ -289,6 +284,8 @@ public class DialView extends View {
         if (dist < inner || dist > outer * 1.12f) return false;
         double deg = Math.toDegrees(Math.atan2(dx, -dy));                 // 0 = up, cw +
         int hit = (int) (Math.floor(((deg % 360d + 360d) % 360d) / STEP + 0.5d) % SLOTS);
+        selected = hit;      // a manual pick is decided now, not on landing: the listener reads
+                             // getSelected() during rebuild, so committing late would replay the old rule
         spinTo(hit);
         if (listener != null) listener.onSlotPicked(hit);
         return true;

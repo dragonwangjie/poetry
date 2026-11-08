@@ -464,3 +464,25 @@ onAnimationEnd 走 settle / clearSettleTimer 内做 null 守卫）；device 脚�
 出句 月色清且冷/阶前月色与蛩声/旅宿常待月/合围侔月晕/日月宜长寿，全部匹配。但 v1.17.1 这三处修复
 尚未在设备上验证过：写完就再没能把屏唤醒（mWakefulness 停在 Dozing，keyevent 224 与
 wm dismiss-keyguard 都无效，uiautomator 返回空）。verify.sh 离线三套 ALL GREEN，不等于修好了。
+
+# v1.18 (versionCode 21) 去掉名字框与黑三角，高亮改在落点才跳
+
+1. 删「出句者/答句者」两个输入框：askerName/answerName 字段、nameRow() 方法与
+   outer.addView(nameRow()) 一并删除，orDefault() 随之无用也删。asker()/answerName() 保留但返回
+   常量 —— 屏上原本显示的就是这两个词（「系统」「我」只是 hint，从没被输入过，一直走 orDefault
+   兜底），所以比分行与日志措辞一字不变。
+2. 删表盘顶部黑色小三角（onDraw 末尾那段 Path + 0xFF2B2B2B）。表针自己会指，不需要固定指针。
+3. 高亮时机（真 bug）：animateTo 开头就 `selected = slot`，点下开始那一帧目标格即变色，5 秒抽签
+   结果提前泄露。改为 animateTo 只写 landing，settle() 里才 `selected = landing`，表针停稳一刻
+   颜色才跳。手动点格子仍当帧提交（onTouchEvent 里 `selected = hit`）：onSlotPicked -> rebuild()
+   同步读 getSelected()，延后提交会按旧规则重抽。
+
+test_feihua.py 补 4b/4c：body() 用花括号配对截方法体（防止被别处字符串提及糊弄），断言 animateTo
+内不得出现 `selected = `、必须有 `landing = slot`；settle 内必须 `selected = landing`；onTouchEvent 内
+必须 `selected = hit`；另断 0xFF2B2B2B 消失、onDraw 不再 drawPath、drawHand 仍只画一次、
+nameRow/askerName/answerName/edit("系统")/edit("我") 全部不在。变异测试 5 例全 CAUGHT（改回
+selected=slot / 重画三角 / 抽掉 settle 的提交 / 加回 nameRow / 加回 askerName 字段）。
+
+test_feihua_device.py 也补断「系统」「我」两节点消失。但本轮上机验证未做成：mWakefulness 反复掉回
+Dozing，keyevent 224/26 与 wm dismiss-keyguard 都留不住亮屏，屏睡计数报「测试期间屏幕睡了 20 次」，
+FAIL 文案因此指向环境冻结而非产品逻辑。v1.18 这三处改动目前只有离线证据。

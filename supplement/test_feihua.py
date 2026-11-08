@@ -164,6 +164,47 @@ ck('spinRandom' in dial and 'spinRandom(' in act, '开始 should drive a timed r
 ck('isSpinning() return true' in dial or 'if (isSpinning()) return true' in dial,
    'taps during the spin should be swallowed')
 
+
+def body(src, signature, what):
+    """Brace-matched method body, so a check cannot be satisfied by a mention elsewhere."""
+    i = src.index(signature)
+    j = src.index('{', i)
+    depth, k = 0, j
+    while k < len(src):
+        if src[k] == '{':
+            depth += 1
+        elif src[k] == '}':
+            depth -= 1
+            if depth == 0:
+                return src[j:k + 1]
+        k += 1
+    ck(True, 'no body found for %s' % what)
+    return ''
+
+
+# --- 4b. the wedge must not light up until the hand lands ----------------------------------
+# animateTo used to do `selected = slot` up front, so the destination wedge highlighted the
+# instant 开始 was pressed and gave the draw away 5 seconds early.
+anim_body = body(dial, 'private void animateTo(', 'animateTo')
+ck('selected = ' not in anim_body, 'animateTo commits the highlight early; it should only set landing')
+ck('landing = slot' in anim_body, 'animateTo should record the destination as landing')
+settle_body = body(dial, 'private void settle()', 'settle')
+ck('selected = landing' in settle_body, 'settle() should be where the highlight is committed')
+# a manual wedge tap is decided immediately: onSlotPicked reads getSelected() during rebuild
+ck('selected = hit' in body(dial, 'public boolean onTouchEvent(', 'onTouchEvent'),
+   'a manual tap must commit its wedge at once, not on landing')
+
+# --- 4c. no fixed top pointer, no 出句者/答句者 name boxes ----------------------------------
+ck('0xFF2B2B2B' not in dial, 'the black pointer triangle should be gone')
+ck('drawPath(' not in body(dial, 'protected void onDraw(', 'onDraw'),
+   'onDraw should draw no marker any more; only drawHand paints a path')
+ck(body(dial, 'private void drawHand(', 'drawHand').count('drawPath(') == 1,
+   'the hand should still be drawn exactly once')
+for gone in ('private View nameRow()', 'outer.addView(nameRow())', 'private EditText askerName;',
+             'private EditText answerName;', 'edit("系统"', 'edit("我"'):
+    ck(gone not in act, '%s should be gone from the layout' % gone)
+ck('asker()' in act and 'answerName()' in act, 'score/log wording still needs the two label helpers')
+
 # --- 5. strict lookup: no fall back from a position to "anywhere" --------------------------
 db = open(SRC + 'PoemDb.java', encoding='utf8').read()
 head = db[db.index('public int[] findLines'):]
