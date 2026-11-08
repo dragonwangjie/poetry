@@ -486,3 +486,32 @@ selected=slot / 重画三角 / 抽掉 settle 的提交 / 加回 nameRow / 加回
 test_feihua_device.py 也补断「系统」「我」两节点消失。但本轮上机验证未做成：mWakefulness 反复掉回
 Dozing，keyevent 224/26 与 wm dismiss-keyguard 都留不住亮屏，屏睡计数报「测试期间屏幕睡了 20 次」，
 FAIL 文案因此指向环境冻结而非产品逻辑。v1.18 这三处改动目前只有离线证据。
+
+## v1.18 设备实测（补上一轮缺失的证据）
+
+三项都在真机上确认，其中第三项只能靠像素：表盘自绘，uiautomator 把它报成普通 android.view.View，
+既拿不到自定义类也拿不到颜色。
+
+supplement/shoot_dial.py 的做法：adb exec-out screencap 出 raw RGBA8888（16 字节头），一帧 14MB、
+拉回 0.6s，所以逐帧采样负担得起。几何不从像素反推——之前用奶油色 bbox 反算把圆心定到 (781,959)，
+明显偏离屏心，因为页面上别处也有浅色。改为读布局树：包含两颗中枢圆钮、又不是整页的那个节点就是
+表盘块，centre=节点中心、outerR=min(w,h)/2-22dp，与 DialView.outerR() 同一套算法；实测 (640,1102)、
+outerR=355。角度也曾错 22.5 度：DialView 画的是 start=-90-STEP/2+i*STEP 扫 STEP，扇形中心在 i*45-90
+（12 点起顺时针），不是 i*45-67.5。采样点每格 5 角 x 2 半径，静止时恰好一格拿到 9/10、其余 0/10，
+说明分类器没读错。
+
+第一次跑出一个假 FAIL（t=2.7s 变色）。原因是倒计时徽标：badge 也是暗红 0xFF8B3A2B，圆心在
+(outer-26dp)=0.762*outer、半径 13dp=0.118*outer，扫起来覆盖 0.64-0.88，正好压在我原先 0.78 的采样
+环上，扫针经过哪格就把哪格染红。半径挪到 0.90/0.94（badge 够不到，rim 在 1.00）并要求 n_lit>=7/10
+才判亮。重跑：按下起 6.6s 才变色 —— 5s 扫针 + 约 1s 的按下确认与采样延迟，PASS；t<1s 才是 bug。
+
+黑三角用同一帧验：删除位置是 rim 上方 y in [cy-outer-12dp, cy-outer+2dp]、|x-cx|<=7dp，实测该带内
+暗像素 0 个，全是页面底色 (251,247,239)；改前那里有 ~200 像素实心 0xFF2B2B2B。
+
+verify.sh 全绿：device assertions ran=7 ALL PASS、feihua device checks ALL PASS（含「系统」「我」
+两节点已消失、抽签落点与出句位置相符）。
+
+踩过的坑记一笔：之前几轮「屏每分钟必睡」不是 MIUI 冻结，是 keepawake(False) 把
+screen_off_timeout 写回 60000，自己把下一轮埋掉；这台机 AC/USB/Wireless 全 false（无线 adb），
+svc power stayon 因此完全无效，只能靠长超时。uiautomator dump 前必须先亮屏解锁，否则拿到的是
+空的 8245 字节壳子——那次 gone-ok=True 是零节点造成的空洞为真，不算证据。

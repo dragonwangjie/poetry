@@ -50,6 +50,13 @@ run_suite "device assertions (rendered text via uiautomator)" timeout 1200 bash 
 # 飞花令 needs the screen awake and drives a real 5s spin, so it lives here and not in the
 # pre-commit hook. It re-installs nothing; it just enters via 主页 and presses 开始.
 run_suite "feihua device checks (spin lands, 出句 honours the landed position)" timeout 900 python3 test_feihua_device.py
+# When does the wedge change colour? Invisible to uiautomator (DialView reports as a plain View and
+# colour is never in the tree), so this one samples screencap pixels. It presses the hub button and
+# films the dial for up to 10s -- a couple of minutes total, and it needs the screen awake and
+# unlocked, so it stays opt-in: PIXEL=1 bash supplement/verify.sh
+if [ "${PIXEL:-0}" = 1 ]; then
+  run_suite "dial colour timing (pixels)" timeout 900 python3 shoot_dial.py
+fi
 
 echo "verify: $([ $status -eq 0 ] && echo ALL GREEN || echo SOMETHING FAILED)"
 exit $status
