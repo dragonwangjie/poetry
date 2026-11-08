@@ -48,11 +48,11 @@ jobs:
           java-version: '17'
 
       # No Gradle: app/build.sh drives aapt2 + javac + d8 + zipalign + apksigner directly.
-      - uses: android-actions/setup-android@v3
-
-      # build.sh wants $ANDROID_HOME/platforms/android-34/android.jar plus any build-tools.
-      - name: Install SDK packages
-        run: yes | sdkmanager --install "platforms;android-34" "platform-tools"
+      # android-actions/setup-android is deliberately NOT used -- it installs the legacy `tools`
+      # package that current cmdline-tools no longer publishes, and failed run #1 that way.
+      # The runner image already ships an SDK; ci/setup_sdk.sh just tops up what is missing.
+      - name: Set up Android SDK
+        run: bash ci/setup_sdk.sh
 
       - name: Check the bundled database
         run: python3 ci/check_db.py
