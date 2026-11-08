@@ -20,7 +20,8 @@ import android.view.animation.DecelerateInterpolator;
  * wheel spin landing the chosen wedge under the pointer (spinTo). Wedge i sits at i*45deg
  * clockwise from the pointer, so the band angle centring wedge i is exactly -i*45deg.
  *
- * Labels are counter-rotated per wedge; without that, the bottom wedges render upside down.
+ * Labels stay upright at every wedge (clock-face style), and the hub is wide enough for three
+ * round buttons: 开始 / 停止 side by side with 认输 below.
  */
 public class DialView extends View {
 
@@ -97,6 +98,13 @@ public class DialView extends View {
     /** Ring radius, leaving headroom at the top for the pointer triangle. */
     private float outerR() { return Math.min(getWidth(), getHeight()) / 2f - 22f * density; }
 
+    /**
+     * Hub radius. 0.70 rather than a slimmer ring: the hole has to hold three round buttons
+     * (开始 / 停止 side by side, 认输 beneath), and onTouchEvent uses the same number so the
+     * dead zone matches what is drawn.
+     */
+    private float innerR() { return outerR() * 0.70f; }
+
     /** 0-based index into a poem line that this slot demands; null = 任意位置. */
     public static Integer posOf(int slot) { return slot <= 0 ? null : Integer.valueOf(slot - 1); }
 
@@ -108,7 +116,7 @@ public class DialView extends View {
         float w = getWidth(), h = getHeight();
         float cx = w / 2f, cy = h / 2f;
         float outer = outerR();
-        float inner = outer * 0.56f;
+        float inner = innerR();
         oval.set(cx - outer, cy - outer, cx + outer, cy + outer);
 
         for (int i = 0; i < SLOTS; i++) {
@@ -124,7 +132,10 @@ public class DialView extends View {
         c.drawCircle(cx, cy, inner, hub);
         c.drawCircle(cx, cy, inner, rim);
 
-        label.setTextSize(inner * 0.30f);
+        // Wedges are painted with absolute arc angles, so the text was never tilted: drawing it
+        // straight (no canvas rotation) keeps every label upright, clock-face style. Rotating by
+        // the wedge angle here was the original bug -- it turned 第5/6/7字 upside down.
+        label.setTextSize((outer - inner) * 0.44f);
         float mid = (inner + outer) / 2f;
         for (int i = 0; i < SLOTS; i++) {
             float band = angle + i * STEP;                       // 0 = under the pointer
@@ -133,10 +144,7 @@ public class DialView extends View {
             float rad = (float) Math.toRadians(band - 90f);
             float tx = cx + mid * (float) Math.cos(rad);
             float ty = cy + mid * (float) Math.sin(rad);
-            c.save();
-            c.rotate(band, tx, ty);                                // undo the wedge tilt
             c.drawText(labels[i], tx, ty + label.getTextSize() * 0.36f, label);
-            c.restore();
         }
 
         pointer.moveTo(cx, cy - outer + 2f * density);
@@ -156,7 +164,7 @@ public class DialView extends View {
     public boolean onTouchEvent(MotionEvent e) {
         if (e.getAction() != MotionEvent.ACTION_DOWN) return true;
         float cx = getWidth() / 2f, cy = getHeight() / 2f;
-        float outer = outerR(), inner = outer * 0.56f;
+        float outer = outerR(), inner = innerR();
         float dx = e.getX() - cx, dy = e.getY() - cy;
         float dist = (float) Math.sqrt(dx * dx + dy * dy);
         if (dist < inner || dist > outer * 1.12f) return false;             // hub = buttons

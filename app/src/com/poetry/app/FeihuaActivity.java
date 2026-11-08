@@ -3,6 +3,7 @@ package com.poetry.app;
 import android.app.Activity;
 import android.content.Intent;
 import android.graphics.Typeface;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -49,7 +50,6 @@ public class FeihuaActivity extends Activity {
     private EditText answerName;
     private EditText answerInput;
     private TextView counter;
-    private Button startBtn;
     private ListView logList;
     private BaseAdapter logAdapter;
 
@@ -184,7 +184,7 @@ public class FeihuaActivity extends Activity {
     private View dialBlock() {
         FrameLayout box = new FrameLayout(this);
         LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, dp(236));
+                ViewGroup.LayoutParams.MATCH_PARENT, dp(262));
         blp.setMargins(0, dp(2), 0, dp(2));
         box.setLayoutParams(blp);
 
@@ -195,23 +195,65 @@ public class FeihuaActivity extends Activity {
             public void onSlotPicked(int slot) { rebuild(); }
         });
 
-        // ③ centre controls float in the dial's hole; DialView.onTouchEvent ignores that area.
+        // ③ three round controls inside the dial's hole: 开始 / 停止 on one row, 认输 below.
+        // DialView.onTouchEvent ignores touches nearer the centre than its hub radius, so the
+        // wedges keep taking taps while this overlay owns the middle.
         LinearLayout hub = new LinearLayout(this);
         hub.setOrientation(LinearLayout.VERTICAL);
         hub.setGravity(android.view.Gravity.CENTER);
         box.addView(hub, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        startBtn = btn("开始", new View.OnClickListener() {
-            public void onClick(View v) { toggle(); }
-        });
-        hub.addView(startBtn);
-        Button quit = btn("认输", new View.OnClickListener() {
+        LinearLayout rowA = new LinearLayout(this);
+        rowA.setOrientation(LinearLayout.HORIZONTAL);
+        rowA.setGravity(android.view.Gravity.CENTER);
+        rowA.addView(roundBtn("开始", 0xFF2E7D32, new View.OnClickListener() {
+            public void onClick(View v) { start(); }
+        }));
+        rowA.addView(roundBtn("停止", 0xFFC77700, new View.OnClickListener() {
+            public void onClick(View v) { stop(); }
+        }));
+        hub.addView(rowA);
+
+        Button quit = roundBtn("认输", 0xFFB00020, new View.OnClickListener() {
             public void onClick(View v) { giveUp(); }
         });
-        quit.setTextColor(0xFF8B3A2B);
-        hub.addView(quit);
+        LinearLayout.LayoutParams qp = new LinearLayout.LayoutParams(dp(52), dp(52));
+        qp.topMargin = dp(6);
+        hub.addView(quit, qp);
         return box;
+    }
+
+    /**
+     * Circular button: an OVAL GradientDrawable plus a square LayoutParams. A Button would
+     * otherwise size itself to the label and the oval would come out an ellipse.
+     */
+    private Button roundBtn(String label, int color, View.OnClickListener l) {
+        GradientDrawable bg = new GradientDrawable();
+        bg.setShape(GradientDrawable.OVAL);
+        bg.setColor(color);
+        bg.setStroke(dp(2), 0x33000000);
+
+        Button b = new Button(this);
+        b.setText(label);
+        b.setTextSize(13f);
+        b.setAllCaps(false);
+        b.setTextColor(0xFFFFFFFF);
+        b.setMinWidth(0);
+        b.setMinimumWidth(0);
+        b.setMinHeight(0);
+        b.setMinimumHeight(0);
+        b.setPadding(0, 0, 0, 0);
+        b.setStateListAnimator(null);      // framework elevation anim would clip the circle edges
+        b.setBackground(bg);
+        b.setOnClickListener(l);
+        // new Button(...) has null LayoutParams, so `getLayoutParams() instanceof ...` is never
+        // true; assign outright or LinearLayout's default (MATCH_PARENT width) stretches it.
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(dp(52), dp(52));
+        p.rightMargin = dp(4);
+        p.leftMargin = dp(4);
+        b.setLayoutParams(p);
+        return b;
     }
 
     private View answerRow() {
@@ -305,7 +347,6 @@ public class FeihuaActivity extends Activity {
         answerScore = 0;
         running = false;
         awaitingAnswer = false;
-        startBtn.setText("开始");
         counter.setText("加载中…");
         if (logAdapter != null) logAdapter.notifyDataSetChanged();
         final String c = ch;
@@ -332,17 +373,20 @@ public class FeihuaActivity extends Activity {
 
     // ----------------------------------------------------------------- game
 
-    private void toggle() {
-        if (running) {
-            running = false;
-            startBtn.setText("继续");
-            note("已暂停");
-            return;
-        }
+    /** 开始 green: start a fresh round, or resume after 停止 without dealing a new 出句. */
+    private void start() {
         if (pool.length == 0) { note("池子空了，换令字或位置再开始"); rebuild(); return; }
+        if (running) { note("已在对局中"); return; }
         running = true;
-        startBtn.setText("停止");
         if (!awaitingAnswer) ask();
+        else note("继续：" + answerName() + " 请先答当前这一句");
+    }
+
+    /** 停止 amber: pause without clearing the board, so 开始 can pick up where it stopped. */
+    private void stop() {
+        if (!running) { note("尚未开始"); return; }
+        running = false;
+        note("已暂停，按「开始」继续");
     }
 
     /** ④ deal the 出句: random unused line that satisfies the dial's position rule. */
@@ -355,8 +399,7 @@ public class FeihuaActivity extends Activity {
                         public void run() {
                             running = false;
                             awaitingAnswer = false;
-                            startBtn.setText("开始");
-                            log.add(new Entry(asker(), "", "", "", true,
+                                                log.add(new Entry(asker(), "", "", "", true,
                                     "出句者无句可出，" + answerName() + " 赢了！"));
                             logAdapter.notifyDataSetChanged();
                             scrollDown();
@@ -449,7 +492,6 @@ public class FeihuaActivity extends Activity {
     private void giveUp() {
         running = false;
         awaitingAnswer = false;
-        startBtn.setText("开始");
         log.add(new Entry(answerName(), "", "", "", true, "答句者认输，出句者胜"));
         logAdapter.notifyDataSetChanged();
         scrollDown();

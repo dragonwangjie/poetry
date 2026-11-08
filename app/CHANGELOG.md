@@ -379,3 +379,27 @@ PoemDb.findLines 改为严格：pos 给定时只在异体字里找该位置，�
 飞花令一处（grep 确认），搜索路径不受影响；实测热字 40 个 × 7 档均非空，「之」等冷字各档也有句。
 
 未做：新界面无自动化断言，轮盘观感与中心按钮命中区仍需目视确认。
+
+# v1.16.1 (versionCode 18) 轮盘中枢三颗圆形按钮
+
+开始（绿 0xFF2E7D32）/ 停止（橙 0xFFC77700）并排在上、认输（红 0xFFB00020）在下，全部画成圆：
+OVAL GradientDrawable + 52dp 见方 LayoutParams + setStateListAnimator(null)（系统 Button 的高程
+动画会按矩形裁剪，圆边被削掉）。
+
+改圆时连修三处自己写进去的错：
+
+1. roundBtn 原先写 `if (b.getLayoutParams() instanceof LinearLayout.LayoutParams)` —— new Button
+   的 getLayoutParams() 是 null，条件恒假，尺寸从没设上过，两颗圆钮会被 LinearLayout 默认参数
+   拉成整宽。改为直接 setLayoutParams(52dp 见方)。
+2. 一个 toggle() 按钮拆成 start()/stop() 两个：开始只在未运行时开局（暂停后按它继续且不重新出
+   句），停止只暂停不清盘；原先 startBtn.setText 的四处调用与字段一并删掉。
+3. DialView 里 c.rotate(band, ...) 是错的：扇形本就用绝对弧角绘制，文字从未被斜置，再转反而把
+   下半圈的第5/6/7字转到倒立。删掉旋转，标签全圈正立。
+
+hub 半径 0.68 -> 0.70（空洞要装三颗圆钮），标签字号随环带 (outer-inner)*0.44 重算。几何复算：三档
+屏宽（320/360/411dp）下 hub 半径 76.3dp，三钮最远角 67.7dp，均容得下；DialView.onTouchEvent 用同
+一 innerR()，中心死区与绘制一致，事件才落得到按钮上。
+
+仍未做：轮盘与三颗圆钮的实际观感依旧没目视验证——设备停在 MIUI 防误触模式
+（ScreenOnProximitySensorGuide，mWakefulness=Dozing），且 FeihuaActivity 未导出，shell 无法 am start，
+必须从主页点「飞花令」进。
