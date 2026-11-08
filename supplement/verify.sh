@@ -47,6 +47,9 @@ cp "$APK" /sdcard/Download/poetry.apk || exit 1
 adb install -r /sdcard/Download/poetry.apk 2>&1 | tail -1
 
 run_suite "device assertions (rendered text via uiautomator)" timeout 1200 bash test_ui_device.sh
+# 飞花令 needs the screen awake and drives a real 5s spin, so it lives here and not in the
+# pre-commit hook. It re-installs nothing; it just enters via 主页 and presses 开始.
+run_suite "feihua device checks (spin lands, 出句 honours the landed position)" timeout 900 python3 test_feihua_device.py
 
 echo "verify: $([ $status -eq 0 ] && echo ALL GREEN || echo SOMETHING FAILED)"
 exit $status

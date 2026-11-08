@@ -7,6 +7,8 @@ import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -54,6 +56,9 @@ public class DialView extends View {
     private Listener listener;
     private SpinDone onDone;
     private ObjectAnimator anim;
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private Runnable settleTimer;                  // frame-clock escape hatch, see animateTo
+    private boolean settled = true;                // guard so a spin ends exactly once
     private final Random rnd = new Random();
 
     public DialView(Context c, AttributeSet a) {
@@ -109,10 +114,10 @@ public class DialView extends View {
 
     /** Abandon a running spin without firing the settle callback (认输 mid-draw). */
     public void cancelSpin() {
-        if (anim != null && anim.isRunning()) {
-            onDone = null;
-            anim.cancel();
-        }
+        onDone = null;
+        settled = true;                            // swallow the pending onAnimationEnd too
+        clearSettleTimer();
+        if (anim != null && anim.isRunning()) anim.cancel();
         countdown = 0;
         invalidate();
     }
@@ -129,11 +134,12 @@ public class DialView extends View {
      * the motion never reads as a rewind. delta is the clockwise gap from where the hand is now
      * to wedge slot, and the hand lands on exactly slot*STEP mod 360 either way.
      */
-    private void animateTo(int slot, long ms, float factor, int turns) {
+    private void animateTo(final int slot, final long ms, float factor, int turns) {
         selected = slot;
         float delta = ((slot * STEP - handAngle) % 360f + 360f) % 360f;
         float target = handAngle + turns * 360f + delta;
         if (anim != null && anim.isRunning()) anim.cancel();
+        settled = false;
         anim = ObjectAnimator.ofFloat(this, "angle", target);
         anim.setDuration(ms);
         anim.setInterpolator(new DecelerateInterpolator(factor));
@@ -147,13 +153,37 @@ public class DialView extends View {
             }
         });
         anim.addListener(new android.animation.AnimatorListenerAdapter() {
-            @Override public void onAnimationEnd(android.animation.Animator a) {
-                countdown = 0;
-                invalidate();
-                if (onDone != null) { SpinDone cb = onDone; onDone = null; cb.onSettled(selected); }
-            }
+            @Override public void onAnimationEnd(android.animation.Animator a) { settle(); }
         });
         anim.start();
+        // ObjectAnimator advances on frame callbacks, so a screen that sleeps mid-spin produces
+        // no frames and the animation never ends -- which once left the hub stuck on 抽令 with no
+        // 出句 ever dealt. The timeout settles the spin off the frame clock; anim.cancel() then
+        // delivers onAnimationEnd even though the animator stalled.
+        clearSettleTimer();
+        settleTimer = new Runnable() {
+            public void run() {
+                if (!settled) { anim.cancel(); settle(); }
+            }
+        };
+        main.postDelayed(settleTimer, ms + 400L);
+    }
+
+    private void clearSettleTimer() {
+        if (settleTimer != null) {
+            main.removeCallbacks(settleTimer);
+            settleTimer = null;
+        }
+    }
+
+    /** End the spin exactly once, whether the animator finished on its own or the timer forced it. */
+    private void settle() {
+        if (settled) return;
+        settled = true;
+        clearSettleTimer();
+        countdown = 0;
+        invalidate();
+        if (onDone != null) { SpinDone cb = onDone; onDone = null; cb.onSettled(selected); }
     }
 
     private static int clamp(int i) { return i < 0 ? 0 : (i >= SLOTS ? SLOTS - 1 : i); }

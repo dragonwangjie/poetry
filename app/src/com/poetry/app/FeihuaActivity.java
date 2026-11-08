@@ -10,6 +10,7 @@ import android.os.Looper;
 import android.text.InputFilter;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.BaseAdapter;
 import android.widget.Button;
 import android.widget.EditText;
@@ -72,6 +73,12 @@ public class FeihuaActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        // The 5s sweep is an ObjectAnimator and the pool reload is a posted Runnable; MIUI
+        // suspends both the moment the screen goes off, which leaves the hub stuck on 抽令 with
+        // no 出句 ever dealt. Holding the screen on while this page is up is what prevents that
+        // for a real player (adb's stayon only applies while charging).
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
         db = PoemDb.get(this);
         db.open();
         buildUi();

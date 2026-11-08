@@ -437,4 +437,30 @@ test_feihua.py 里两段是空断言，被变异测试抓出来后重写：原�
 参数（SLOTS/STEP/SPIN_MS）也从源码读；(int) 只删不转，并用 cast_ok 断言它一定包着 floor/ceil。
 重跑 12 例变异：11 处改坏全部 CAUGHT（含此前 MISSED 的落点偏移、倒退、floor），基线通过。
 
-未做：轮盘/表针/倒计时刻的观感仍无目视验证（设备卡在 MIUI 防误触，FeihuaActivity 又未导出）。
+# v1.17.1 (versionCode 20) 修表针不落地：设备侧验证暴露的真问题
+
+设备断言补上后（supplement/test_feihua_device.py，走 adb+uiautomator：主页点「飞花令」→点中枢
+「开始」→ 读屏断言），第一轮就抓出：按钮停在「抽令」，池子已加载（剩余 19570 句），但一局没开。
+
+logcat 定位到断链位置：
+  start() pendingStart=true → spinRandom target=4 → animateTo from=0.0 to=1620.0 → 之后再无日志
+即 ObjectAnimator 起来了，但 onAnimationEnd 与自加的 postDelayed 兜底双双没跑。同一次实验里
+1.2 秒的主线程探针也没打印 —— 进程被 MIUI 冻结了（息屏即冻），不是动画算术问题。
+（另一半原因是测试自己的 bug：wake() 用 keyevent 26 是 POWER 切换，屏本来亮着，一发就按睡了。）
+
+三处改动：
+1. DialView.settle()：动画结束统一走它，settled 保证只跑一次；cancelSpin 一并吞掉挂起的结束回调。
+2. 兜底定时器改用独立 main-looper Handler，不再用 View.postDelayed —— View.postDelayed 走 view root
+   的 handler，视图 detach 或窗口不可见时行为不同；main.postDelayed(settleTimer, ms+400) 不依赖这个。
+3. FeihuaActivity.onCreate 加 FLAG_KEEP_SCREEN_ON。这是面向真实用户的修法：表针转一半屏睡了，
+   用户看到的正是「按了开始不出一句」。adb 的 svc power stayon 只在充电时生效，所以设备侧另用轮询
+   中检测 mWakefulness 并 keyevent 224 唤醒（224 只唤不睡，26 会反着把屏按睡）。
+
+测试端同时补：test_feihua.py 3c 段断言兜底链路（postDelayed(settleTimer / settle() 只跑一次 /
+onAnimationEnd 走 settle / clearSettleTimer 内做 null 守卫）；device 脚本记录「测试期间屏睡了几次」，
+睡过就把环境冻结写进 FAIL 文案，避免再把环境问题当成产品 bug。
+
+证据边界要说清：v1.17 的落点随机性与「出句严格符合落点位置」是真跑过的 —— 5 轮分别落 任意/1/2/4/5，
+出句 月色清且冷/阶前月色与蛩声/旅宿常待月/合围侔月晕/日月宜长寿，全部匹配。但 v1.17.1 这三处修复
+尚未在设备上验证过：写完就再没能把屏唤醒（mWakefulness 停在 Dozing，keyevent 224 与
+wm dismiss-keyguard 都无效，uiautomator 返回空）。verify.sh 离线三套 ALL GREEN，不等于修好了。

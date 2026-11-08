@@ -110,6 +110,22 @@ for hand in (0.0, 17.0, 44.9, 90.0, 180.0, 359.0, 723.4):
 # 4 whole turns on the timed spin, and the hand must still be centred on its wedge
 ck('SPIN_MS, 1.25f, 4)' in dial.replace('\n', ' '), '开始 should spin 4 turns, not fewer')
 
+# --- 3c. the spin must end even if the screen sleeps mid-sweep ------------------------------
+# ObjectAnimator runs off frame callbacks. A MIUI screen that drops to Dozing produces no frames,
+# onAnimationEnd never fires, and the hub stays on 抽令 with no 出句 dealt -- that was a real bug
+# caught by the device suite. The escape hatch is a View.postDelayed timer, so assert it is wired.
+ck('postDelayed(settleTimer' in dial, 'no timer escape hatch: a sleeping screen would strand the spin')
+ck('if (!settled' in dial or 'if (settled) return' in dial, 'settle() must run exactly once')
+ck('onAnimationEnd(android.animation.Animator a) { settle(); }' in dial,
+   'the animator ending must route through settle(), not fire the callback directly')
+ck(re.search(r'void settle\(\)\s*\{.*?cb\.onSettled\(selected\)', dial, re.S) is not None,
+   'settle() should hand the landed wedge to the callback')
+# removeCallbacks(null) on an attached view clears every message on the view root
+ck(re.search(r'void clearSettleTimer\(\)\s*\{\s*if \(settleTimer != null\) \{', dial) is not None,
+   'removeCallbacks must never be called with a null Runnable')
+ck('removeCallbacks(settleTimer)' in dial and dial.count('removeCallbacks(') == 1,
+   'clearSettleTimer should be the only removeCallbacks call site')
+
 
 class _Anim:
     """Stands in for ValueAnimator inside the scraped countdown expression."""
