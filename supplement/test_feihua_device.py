@@ -39,7 +39,8 @@ def wake():
     if 'mWakefulness=Awake' not in state:
         sh(['input', 'keyevent', '224'])          # WAKEUP: wakes, never sleeps
         time.sleep(2)
-    sh(['wm', 'dismiss-keyguard'])
+    sh(['input', 'swipe', '540', '2100', '540', '700', '300'])   # MIUI needs the swipe-up;
+    sh(['wm', 'dismiss-keyguard'])                               # dismiss-keyguard alone leaves it up
     time.sleep(1)
 
 
@@ -110,17 +111,20 @@ for gone in ('系统', '我'):
 
 # ---------------------------------------------------------------- press 开始 and read
 tap(hub_xml, '开始')
-# The sweep is 5s and the pool reload runs off the UI thread, so wait for the screen to settle
-# instead of guessing a duration: poll until the counter stops saying 加载中.
+# The 5s sweep ends with beginPlay(), which puts the label back to 开始 on both paths (dealt, and
+# empty-pool-with-a-note) -- so that is the signal to read the screen. Do NOT wait on 剩余: that
+# text is already present from the initial load, which once made this grab the screen ~1s after
+# 开始 and report "no 出句" for a spin that was simply still running.
 slept = 0
 texts = []
-for _ in range(20):
+deadline = time.time() + 30
+while time.time() < deadline:
     time.sleep(1)
     texts, _ = grab('fh_after', tries=1)
     if 'Awake' not in sh(['dumpsys', 'power']):
         slept += 1
         sh(['input', 'keyevent', '224'])
-    if '加载中' not in '\n'.join(texts) and any('剩余' in t for t in texts):
+    if '开始' in texts or any(t.startswith('出句者 出') for t in texts):
         break
 joined = '\n'.join(texts)
 
