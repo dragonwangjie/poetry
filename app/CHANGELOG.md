@@ -515,3 +515,48 @@ verify.sh 全绿：device assertions ran=7 ALL PASS、feihua device checks ALL P
 screen_off_timeout 写回 60000，自己把下一轮埋掉；这台机 AC/USB/Wireless 全 false（无线 adb），
 svc power stayon 因此完全无效，只能靠长超时。uiautomator dump 前必须先亮屏解锁，否则拿到的是
 空的 8245 字节壳子——那次 gone-ok=True 是零节点造成的空洞为真，不算证据。
+
+## v1.19 GitHub Actions 构建 APK
+
+`.github/workflows/build-apk.yml`：手动 `workflow_dispatch` + 推 tag（`v*.*` / `v*.*.*` /
+`release-*`）自动构建，产物上传为 Release 附件。**数据库不在 CI 重建** ——
+`out/poetry_lite.db.gz`（~70 MB）本就版本化，`build.sh` 找不到未压缩库时直接把它打进 `assets/`；
+CI 只校验（体积不是桩、gzip 完好、必需表齐、行数 >79000）。所以 CI 只要 JDK + aapt2 +
+android-34 的 `android.jar`，不需要 `repo/`、`pydict/`、注译语料。
+
+三个真实坑，都是跑出来的不是想出来的：
+
+1. **`android-actions/setup-android@v3` 在 run #1 就挂**：`Warning: Failed to find package 'tools'`
+   → sdkmanager 退 1。它装的是已停发的 legacy `tools` 包；日志前面那一大堆
+   "Android SDK Preview…agree to the terms" 是 license 正文噪音，不是失败原因，很容易误读成
+   需要接受预览协议。runner 镜像本就预装 SDK，于是改成 `ci/setup_sdk.sh` 只补缺的东西。
+2. **校验清单必须照 build.sh 的真实依赖列，不能照 SDK 愿望清单**。第一版要求 `$BT/aapt2` 可执行，
+   结果本机整套 build-tools 都被判死 —— 其实 build.sh 用的是 PATH 里的 `/usr/bin/aapt2`，
+   zipalign 也走自带的 `app/zipalign.py`。真正要验的是：aapt2（PATH 优先，否则 `$BT/aapt2`）、
+   `$BT/d8`、`java -jar $BT/lib/apksigner.jar`、`platforms/android-34/android.jar`、javac/python3/zip。
+   build-tools 逐个**实跑**挑选而非取版本号最大：本机 `37.0.0-rc2/aapt2` 就因缺 loader 依赖
+   `cannot execute: required file not found`，而隔壁 36.0.0 正常。
+3. **`test_feihua.py` 的 `POETRY_SRC` 默认写死 `/root/poetry/...`**，本机绿、CI 上必炸。改为按
+   `__file__` 推导（仓库已有这条约定，是我这次新增文件时漏守）。
+
+版本号来源统一：`app/AndroidManifest.xml` 是 versionCode/versionName 的唯一来源，`build.sh` 从它
+读并显式传给 aapt2（原来写死 `--version-code 1 --version-name 1.0`，实际生效的一直是 manifest
+值，但那行读起来像它在做决定，且真生效就会造出自称 v1、无法覆盖升级的包）。tag 只做**一致性
+校验**、不当取值：`v1.19` 必须等于 `android:versionName`（容忍 `-rcN` 后缀），否则 CI 直接失败 ——
+APK 里的版本来自 manifest，让 Release 标题另取一源就会让下载文件和页面说的是两个版本。
+
+`ci/check_release_tag.sh` 防的是：softprops/action-gh-release 会往**已存在**的 tag 上挂附件，
+所以在 main 上勾着 make_release 重跑，会把今天的 APK 挂到上个月的 Release 上。tag 存在但不是
+当前 commit 就失败（需要 `fetch-depth: 0`）。
+
+签名：`POETRY_KEYSTORE`（base64）+ `POETRY_KS_PASS` 两个 secret 已配好；缺失时不静默换钥匙，而是
+出 `::warning::` —— 新生成的钥匙签出的包能装但**无法覆盖升级**已装应用。
+
+验证（都是真实运行，不是本地模拟）：
+- run #1（dispatch）failure → 定位到 setup-android；run #2（dispatch）**success**，产物
+  `poetry-1.18` 69,923,411 B；run #3（`git push origin v1.18`）**success**，全 14 步绿。
+- Release v1.18 附件 `poetry.apk` 69,906,970 字节，与本机产物同大小；证书 SHA-256
+  `22124039…473caa1a` 与本机完全一致；装回手机 `adb install -r` 返回 `Success`（覆盖升级成功
+  才算签名对的）。sha256 与本机不同属正常：zip 里存了 mtime 与路径，构建不是逐字节可复现的。
+- 另外用 `git clone` 出来的干净副本跑过完整链（check_db → version → build → check_apk →
+  SKIP_DEVICE verify），那份副本只有 `.gz`、没有 keystore，和 Actions 拿到的环境一致。

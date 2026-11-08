@@ -125,6 +125,7 @@ JDK + aapt2 + android-34 的 `android.jar`，不需要 `repo/`、`pydict/`、注
 
 | 脚本 | 作用 |
 |---|---|
+| `ci/setup_sdk.sh` | 探测并补齐 SDK（只缺什么装什么）；build-tools 逐个**实跑**挑选 |
 | `ci/version.sh` | 版本唯一来源是 `app/AndroidManifest.xml`；tag 与它不符就失败 |
 | `ci/check_db.py` | 校验入库的 `.gz`：能解压、`integrity_check` 通过、表齐、行数够 |
 | `ci/check_apk.sh` | 从成品 APK 回读 versionCode/versionName、验签、比对 `assets/poetry.db.gz` 字节数 |
@@ -132,7 +133,9 @@ JDK + aapt2 + android-34 的 `android.jar`，不需要 `repo/`、`pydict/`、注
 
 四个脚本都能在本地直接跑，且下面这条模拟流程验证过。
 
-一次性配好签名（不配也能构建，但 `build.sh` 会新生成一把临时钥匙，产物**无法覆盖升级**已装的应用）：
+签名已配好：仓库 secret `POETRY_KEYSTORE`（keystore 的 base64）与 `POETRY_KS_PASS`。
+run #3 产物的证书指纹与本机一致、`adb install -r` 覆盖升级成功，即钥匙正确。
+不配也能构建，但 `build.sh` 会新生成一把临时钥匙，产物**无法覆盖升级**已装的应用。换仓库时重配：
 
 ```bash
 base64 -w0 app/release.keystore | gh secret set POETRY_KEYSTORE
@@ -146,8 +149,8 @@ gh secret set POETRY_KS_PASS < <(echo poetry123)
 
 ```bash
 rm -rf /tmp/ci-sim && git clone /root/poetry /tmp/ci-sim && cd /tmp/ci-sim
-export ANDROID_HOME=/opt/android-sdk
-python3 ci/check_db.py && bash ci/version.sh && bash app/build.sh   && bash ci/check_apk.sh 21 && SKIP_DEVICE=1 bash supplement/verify.sh
+bash ci/setup_sdk.sh
+python3 ci/check_db.py && bash ci/version.sh && bash app/build.sh \
 ```
 
 ## 语料许可
