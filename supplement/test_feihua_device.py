@@ -70,15 +70,23 @@ def tap(nodes_xml, label):
     return False
 
 
+_prev_timeout = ['']
+
+
 def keepawake(on):
-    """MIUI freezes a backgrounded/screen-off app: no animation frames, no posted Runnables, so a
-    spin started then never settles. Hold the screen on for the duration of the test."""
+    """Hold the screen on for the run. Two traps: `svc power stayon` only applies while charging
+    (this phone reports AC/USB/Wireless all false, so it does nothing), and restoring the timeout
+    to 60000 at the end used to sabotage the NEXT run -- the screen then died a minute in, every
+    single time, which read as "MIUI froze the app". So: save whatever the user had and put that
+    back, never a hardcoded 60s."""
     if on:
+        _prev_timeout[0] = sh(['settings', 'get', 'system', 'screen_off_timeout']).strip()
         sh(['svc', 'power', 'stayon', 'true'])
         sh(['settings', 'put', 'system', 'screen_off_timeout', '600000'])
     else:
         sh(['svc', 'power', 'stayon', 'false'])
-        sh(['settings', 'put', 'system', 'screen_off_timeout', '60000'])
+        restore = _prev_timeout[0] if _prev_timeout[0] not in ('', 'null') else '600000'
+        sh(['settings', 'put', 'system', 'screen_off_timeout', restore])
 
 
 # ------------------------------------------------------------------ enter the game
