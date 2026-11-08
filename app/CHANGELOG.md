@@ -403,3 +403,20 @@ hub 半径 0.68 -> 0.70（空洞要装三颗圆钮），标签字号随环带 (o
 仍未做：轮盘与三颗圆钮的实际观感依旧没目视验证——设备停在 MIUI 防误触模式
 （ScreenOnProximitySensorGuide，mWakefulness=Dozing），且 FeihuaActivity 未导出，shell 无法 am start，
 必须从主页点「飞花令」进。
+
+# v1.16.1 补：飞花令离线回归 supplement/test_feihua.py
+
+轮盘是自绘 View，uiautomator 里根本没有扇形节点，屏读断言看不到它；于是把这轮真正会错的东西
+固化成第 4 个离线套件（已接进 verify.sh）：
+
+- posOf/slotOf 双向映射 8 档全遍历；
+- 命中判定镜像 onTouchEvent 的 round((deg-angle)/45)，8 个带角 × 8 格 × ±15° 共 192 次，
+  以及 spinTo(0..7) 是否正好停在顶部指针下；
+- 中枢要求三颗圆钮、三色互不相同、绘制与触摸共用同一 innerR()，并按 dp 复算三颗 52dp 圆是否
+  真在空洞内（67.7dp <= 76.3dp）；
+- 源码结构断言：findLines 的 pos 分支必须留着 return new int[0] 且不得出现 postings(v, null)
+  ——用花括号配对取分支（第一版按 'for' 切片切早了，把自己误判成 FAIL）；
+- 数据侧：月/花/春/山/人/风/之 七字 × 8 档池子全部非空，且各档不超过「任意位置」池子。
+
+套件本身也过了变异测试（POETRY_SRC 指到 /tmp/mut 的副本再改坏）：重新加回 c.rotate、删掉严格
+return、两颗钮同色、hub 收到 0.40 —— 四种都能被抓住（rc=1），基线 rc=0。

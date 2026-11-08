@@ -32,6 +32,9 @@ fi
 run_suite "test_parse (corpus parser)" timeout 300 python3 test_parse.py
 run_suite "test_anno (annotations against the shipped db)" timeout 300 python3 test_anno.py "$DB"
 run_suite "test_title_search (ranking rules, SQL from PoemDb.java)" timeout 500 python3 test_title_search.py "$DB"
+# The dial is self-drawn, so uiautomator never sees its wedges; these guard the angle maths and
+# the strict position lookup instead. POETRY_SRC stays default => checks run against real sources.
+run_suite "test_feihua (dial geometry + 令字 rules, mirrors DialView.java)" timeout 300 python3 test_feihua.py "$DB"
 
 if [ "${SKIP_DEVICE:-0}" = 1 ]; then
   echo "== device assertions: skipped (SKIP_DEVICE=1)"
