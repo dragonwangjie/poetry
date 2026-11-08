@@ -418,5 +418,23 @@ hub 半径 0.68 -> 0.70（空洞要装三颗圆钮），标签字号随环带 (o
   ——用花括号配对取分支（第一版按 'for' 切片切早了，把自己误判成 FAIL）；
 - 数据侧：月/花/春/山/人/风/之 七字 × 8 档池子全部非空，且各档不超过「任意位置」池子。
 
-套件本身也过了变异测试（POETRY_SRC 指到 /tmp/mut 的副本再改坏）：重新加回 c.rotate、删掉严格
-return、两颗钮同色、hub 收到 0.40 —— 四种都能被抓住（rc=1），基线 rc=0。
+# v1.17 (versionCode 19) 改成钟表式：表盘固定，表针转 5 秒定位置
+
+去掉停止按钮。中枢只剩两颗圆钮：开始（绿）在上、认输（红）在下。
+
+- DialView 从「盘面转、指针不动」倒过来改成「盘面固定、表针转」：8 格固定在 i*45°，表针
+  （handAngle，0=正上方，顺时针）扫过去。这才叫钟表盘。
+- 点开始 = spinRandom()：随机选一格，表针转满 4 圈再减速停上去，历时 SPIN_MS=5000；表针上带
+  一个倒数圆牌显示剩余秒数（5..1）。停稳后 SpinDone 回调 -> rebuild() 按新位置重抽池子 ->
+  beginPlay() 立刻出第一句。所以「表针指向哪里，本局就按那个位置打」。
+- 中途认输走 cancelSpin()：清掉回调再 cancel，避免动画结束的 onAnimationEnd 又把暂停中的局拉起来。
+- 点格子仍是手动指定（600ms 转过去，无倒计时）；旋转中 onTouchEvent 直接吞掉点击。
+- delta/target 改成「整圈数 + 顺时针补角」，表针永不倒着走。
+
+test_feihua.py 里两段是空断言，被变异测试抓出来后重写：原先 section 3/3b 用 Python 自己把
+公式重算一遍，Java 怎么改它都照绿（把落点改成偏 22.5°、把 ceil 改 floor，它都判 PASS）。现在
+改成把 DialView.java 里的 hit/delta/target/secs 四条表达式用正则抠出来，机械转成 Python 再 eval，
+参数（SLOTS/STEP/SPIN_MS）也从源码读；(int) 只删不转，并用 cast_ok 断言它一定包着 floor/ceil。
+重跑 12 例变异：11 处改坏全部 CAUGHT（含此前 MISSED 的落点偏移、倒退、floor），基线通过。
+
+未做：轮盘/表针/倒计时刻的观感仍无目视验证（设备卡在 MIUI 防误触，FeihuaActivity 又未导出）。

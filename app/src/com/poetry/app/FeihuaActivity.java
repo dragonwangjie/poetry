@@ -50,6 +50,8 @@ public class FeihuaActivity extends Activity {
     private EditText answerName;
     private EditText answerInput;
     private TextView counter;
+    private Button startBtn;
+    private boolean pendingStart = false;
     private ListView logList;
     private BaseAdapter logAdapter;
 
@@ -195,31 +197,26 @@ public class FeihuaActivity extends Activity {
             public void onSlotPicked(int slot) { rebuild(); }
         });
 
-        // ③ three round controls inside the dial's hole: 开始 / 停止 on one row, 认输 below.
-        // DialView.onTouchEvent ignores touches nearer the centre than its hub radius, so the
-        // wedges keep taking taps while this overlay owns the middle.
+        // ③ two round controls stacked in the dial's hole: 开始 over 认输. There is no 停止 any
+        // more -- 开始 now runs the hand for 5s and the wedge it lands on sets the rule.
+        // DialView.onTouchEvent refuses touches nearer the centre than its hub radius, so this
+        // overlay receives them.
         LinearLayout hub = new LinearLayout(this);
         hub.setOrientation(LinearLayout.VERTICAL);
         hub.setGravity(android.view.Gravity.CENTER);
         box.addView(hub, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        LinearLayout rowA = new LinearLayout(this);
-        rowA.setOrientation(LinearLayout.HORIZONTAL);
-        rowA.setGravity(android.view.Gravity.CENTER);
-        rowA.addView(roundBtn("开始", 0xFF2E7D32, new View.OnClickListener() {
+        startBtn = roundBtn("开始", 0xFF2E7D32, new View.OnClickListener() {
             public void onClick(View v) { start(); }
-        }));
-        rowA.addView(roundBtn("停止", 0xFFC77700, new View.OnClickListener() {
-            public void onClick(View v) { stop(); }
-        }));
-        hub.addView(rowA);
+        });
+        hub.addView(startBtn);
 
         Button quit = roundBtn("认输", 0xFFB00020, new View.OnClickListener() {
             public void onClick(View v) { giveUp(); }
         });
         LinearLayout.LayoutParams qp = new LinearLayout.LayoutParams(dp(52), dp(52));
-        qp.topMargin = dp(6);
+        qp.topMargin = dp(8);
         hub.addView(quit, qp);
         return box;
     }
@@ -365,6 +362,7 @@ public class FeihuaActivity extends Activity {
                         } else {
                             answerInput.setHint("答句：「" + ch + "」需在" + ruleText());
                         }
+                        if (pendingStart) beginPlay();
                     }
                 });
             }
@@ -373,23 +371,31 @@ public class FeihuaActivity extends Activity {
 
     // ----------------------------------------------------------------- game
 
-    /** 开始 green: start a fresh round, or resume after 停止 without dealing a new 出句. */
+    /**
+     * 开始 green: run the hand for 5s and let it land at random -- the wedge under it becomes this
+     * round's position rule, the pool is reloaded for that rule, and play begins there.
+     */
     private void start() {
-        if (pool.length == 0) { note("池子空了，换令字或位置再开始"); rebuild(); return; }
-        if (running) { note("已在对局中"); return; }
-        running = true;
-        if (!awaitingAnswer) ask();
-        else note("继续：" + answerName() + " 请先答当前这一句");
-    }
-
-    /** 停止 amber: pause without clearing the board, so 开始 can pick up where it stopped. */
-    private void stop() {
-        if (!running) { note("尚未开始"); return; }
+        if (dial.isSpinning()) return;
         running = false;
-        note("已暂停，按「开始」继续");
+        awaitingAnswer = false;
+        pendingStart = true;
+        startBtn.setText("抽令");
+        dial.spinRandom(new DialView.SpinDone() {
+            public void onSettled(int slot) { rebuild(); }   // rule() now reads the landed wedge
+        });
     }
 
-    /** ④ deal the 出句: random unused line that satisfies the dial's position rule. */
+    /** Once the landed rule's pool is in, deal the first 出句. */
+    private void beginPlay() {
+        pendingStart = false;
+        startBtn.setText("开始");
+        if (pool.length == 0) { note("这个位置无句可用，再按一次开始重抽"); return; }
+        running = true;
+        ask();
+    }
+
+/** ④ deal the 出句: random unused line that satisfies the dial's position rule. */
     private void ask() {
         new Thread(new Runnable() {
             public void run() {
@@ -492,6 +498,9 @@ public class FeihuaActivity extends Activity {
     private void giveUp() {
         running = false;
         awaitingAnswer = false;
+        pendingStart = false;
+        if (dial != null) dial.cancelSpin();      // 认输 also aborts a draw in mid-sweep
+        if (startBtn != null) startBtn.setText("开始");
         log.add(new Entry(answerName(), "", "", "", true, "答句者认输，出句者胜"));
         logAdapter.notifyDataSetChanged();
         scrollDown();
