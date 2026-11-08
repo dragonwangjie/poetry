@@ -59,7 +59,8 @@ git clone ... && cd poetry && bash app/build.sh    # 产物 app/build/poetry.apk
 
 - `app/` — Android 源码（纯 Java + 手写 View，无 androidx）、`build.sh`、`CHANGELOG.md`
 - `supplement/` — 注译抓取 + 全部测试；`verify.sh`、`test_ui_device.sh` 是验证入口
-- `out/` — 构建产物与中间库（git 忽略，仅 `verify_search.py` 例外，它是 CHANGELOG 的验证入口）
+- `out/` — 构建产物与中间库（git 忽略），**两个例外**：`verify_search.py`（CHANGELOG 的验证入口）
+  与 `poetry_lite.db.gz`（~70 MB 成品库，故意入库，见下「只打包 APK」）
 - 根目录 `*.py` — 建库与注译流水线（`build_db.py` 是总入口）
 - `docs/upstream-chinese-poetry.md` — 语料上游的原 README
 
@@ -101,11 +102,53 @@ sha256sum release.keystore | head -c16   # 应为 4b095586867b49ad
 
 ## 远端
 
-`origin = https://github.com/dragonwangjie/poetry`（私有，271 个文件约 10 MB）。
+`origin = https://github.com/dragonwangjie/poetry`（私有，281 个文件；pack 约 70 MB，几乎全是入库的 `out/poetry_lite.db.gz`）。
 `git push` 时通时不通：这台机器只稳定通 `api.github.com`，`github.com:443` 经常直连失败
 （实测 `git push` 第一次成功、随后 `ls-remote` 连接超时）。推不动就走 API：
 `git credential helper` 里已有令牌（`/root/.config/git/credentials`，不要打印内容），
 用 `/git/blobs` + `/git/trees` + `/git/commits` + `/git/refs` 四步提交，孤立分支传 `parents: []`。
+
+## CI 构建 APK（GitHub Actions）
+
+`.github/workflows/build-apk.yml`，两种触发：
+
+```bash
+git tag v1.19 && git push origin v1.19   # 推 tag 自动构建并发 Release（APK 作附件）
+# 或 Actions 页 -> Build APK -> Run workflow（只传 artifact；勾选 make_release 才发 Release）
+```
+
+**数据库不在 CI 重建**。`out/poetry_lite.db.gz` 已版本化，`build.sh` 找不到未压缩库时直接把它
+打进 `assets/`；CI 只做校验（体积不是桩、gzip 完好、必需表齐全、行数 >79000）。所以 CI 只需要
+JDK + aapt2 + android-34 的 `android.jar`，不需要 `repo/`、`pydict/`、注译语料。
+
+步骤里的逻辑都在 `ci/` 下的脚本里（YAML 里不嵌 Python，heredoc 的块缩进会把缩进代码弄坏）：
+
+| 脚本 | 作用 |
+|---|---|
+| `ci/version.sh` | 版本唯一来源是 `app/AndroidManifest.xml`；tag 与它不符就失败 |
+| `ci/check_db.py` | 校验入库的 `.gz`：能解压、`integrity_check` 通过、表齐、行数够 |
+| `ci/check_apk.sh` | 从成品 APK 回读 versionCode/versionName、验签、比对 `assets/poetry.db.gz` 字节数 |
+| `ci/check_release_tag.sh` | tag 已存在却指向别的 commit 就失败（否则今天的 APK 会挂到旧 Release） |
+
+四个脚本都能在本地直接跑，且下面这条模拟流程验证过。
+
+一次性配好签名（不配也能构建，但 `build.sh` 会新生成一把临时钥匙，产物**无法覆盖升级**已装的应用）：
+
+```bash
+base64 -w0 app/release.keystore | gh secret set POETRY_KEYSTORE
+gh secret set POETRY_KS_PASS < <(echo poetry123)
+```
+
+改版本号的地方是 `app/AndroidManifest.xml` 的 `versionCode` / `versionName`（`build.sh` 读它，
+不再自己写死）。发版顺序：改 manifest -> 提交 -> 打同版本 tag -> 推 tag。
+
+模拟 CI（本机跑过，与 Actions 拿到的内容一致：只有 `.gz`、没有 keystore）：
+
+```bash
+rm -rf /tmp/ci-sim && git clone /root/poetry /tmp/ci-sim && cd /tmp/ci-sim
+export ANDROID_HOME=/opt/android-sdk
+python3 ci/check_db.py && bash ci/version.sh && bash app/build.sh   && bash ci/check_apk.sh 21 && SKIP_DEVICE=1 bash supplement/verify.sh
+```
 
 ## 语料许可
 
