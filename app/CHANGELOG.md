@@ -563,15 +563,25 @@ APK 里的版本来自 manifest，让 Release 标题另取一源就会让下载�
 
 补测的三条路径（run #4/#5，都是真实运行）：
 
-- **dispatch + 新 `ref_type` 逻辑**（run #4 success）：13 步里 Release 两步正确 skipped，
-  `Restore keystore` 由 skipped 转 success（两个 secret 配好之后）。
+- **dispatch**（run #4 success，head `111e191`）：Release 两步正确 skipped，`Restore keystore` 由
+  skipped 转 success（两个 secret 配好之后）。**注意：这一跑并不含 `ref_type` 改动** —— 那条提交
+  当时没推上去（见下面“误记”一段），别拿 run #4 当新逻辑的证据。
 - **dispatch + make_release**（run #5 failure，**符合预期**）：失败精确落在 `Check the release tag`，
   报错 `tag v1.18 already exists and points at 2b9108b601, not at this build (111e191cbc...)` →
   `Publishing here would attach this APK to an older release.`。仓库 Release 数仍是 1（v1.18 未被
   污染）。这就是守卫存在的理由：softprops/action-gh-release 会往已存在 tag 上挂附件，没守卫的话
   这次点击会把新 APK 塞进 v1.18 的附件列表，而那个 Release 标题承诺的是旧构建。
-- **tag 判定**：本地跑了六个上下文，关键是 `REF_TYPE=branch GITHUB_REF_NAME=v2-refactor` 现在
-  rc=0 且不再跑 tag 校验（旧逻辑按名字前缀猜，会把它当 tag 并报一句与用户操作无关的 tag 错误）。
+- **`ref_type` 接线**（run #6 success，head `02f9f1c`，分支名 `v9-test`）：`Resolve version` 输出
+  `version 1.18 (code 21)` + `release tag would be: v1.18`，没有 tag 报错，Release 两步 skipped。
+  这是故意挑的分支名：旧逻辑按名字前缀会把 `v9-test` 当 tag，`9-test` 不等于 `1.18` → 整个作业在
+  一个普通分支上失败。本地也跑了六个上下文（branch=main / branch=v2-refactor / tag v1.18 /
+  tag release-1.18 / tag v1.18-rc3 只告警 / tag v9.9 退 1）。
+
+**自己误记了一次，记下来防再犯**：我把 run #4 当成了 `ref_type` 改动的验证，因为只看到上一步
+`push ok` 就说“已在 CI 验证”。实际 `git push` 那行的范围是 `111e191..02f9f1c`（把两条提交一起带上），
+说明改动那一刻还没上云；run #4 的 `head_sha` 也是 `111e191c`。教训：**声称“CI 验过 X”必须比对
+run 的 `head_sha` 是否包含 X 那次提交**（`/actions/runs?per_page=N` 里有 `head_sha`），不能拿
+“先推后跑”的时间顺序当因果。
 
 另记一处自己造的不一致：这段起初写成 `## v1.19`，但 CI 改动没动任何 app 代码、发的 Release 也是
 v1.18（manifest 一直 1.18），标个没发过的版本号会让下一个读的人去找不存在的发布。改回附录用法：

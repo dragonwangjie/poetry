@@ -117,6 +117,10 @@ git tag v1.19 && git push origin v1.19   # 推 tag 自动构建并发 Release（
 # 或 Actions 页 -> Build APK -> Run workflow（只传 artifact；勾选 make_release 才发 Release）
 ```
 
+**普通提交推 main 不会构建**（只匹配 tag），免得每次 WIP 提交都产一个 70 MB 包。
+每次运行本身还会把 APK 存成 artifact（`poetry-<versionName>`，留 30 天），所以想临时拿个包测试
+就用手动触发，不必为此打个 tag。
+
 **数据库不在 CI 重建**。`out/poetry_lite.db.gz` 已版本化，`build.sh` 找不到未压缩库时直接把它
 打进 `assets/`；CI 只做校验（体积不是桩、gzip 完好、必需表齐全、行数 >79000）。所以 CI 只需要
 JDK + aapt2 + android-34 的 `android.jar`，不需要 `repo/`、`pydict/`、注译语料。
