@@ -60,11 +60,14 @@ grab() {   # grab <query> -> /tmp/w.xml
 
 expect() {  # expect <query> <must-contain> [must-not-contain]
   local q="$1" want="$2" absent="${3:-}"
-  ran=$((ran + 1))
   if ! grab "$q"; then
+    # Counted as skipped only: ran must mean "assertions actually evaluated". It used to be
+    # incremented before this check, so a locked screen printed "ran=7 ... skipped=7" -- seven
+    # assertions that never ran, one character away from reading like a pass.
     echo "SKIP [$q]: app window unreachable (screen asleep or overlay owns it)"
     skipped=$((skipped + 1)); return
   fi
+  ran=$((ran + 1))
   local txt
   txt=$(tr '>' '\n' < /tmp/w.xml | grep -oE 'text="[^"]{1,46}"' | sed 's/text=//; s/"//g' | tr '\n' '|')
   local s=ok
