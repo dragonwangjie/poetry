@@ -516,7 +516,7 @@ screen_off_timeout 写回 60000，自己把下一轮埋掉；这台机 AC/USB/Wi
 svc power stayon 因此完全无效，只能靠长超时。uiautomator dump 前必须先亮屏解锁，否则拿到的是
 空的 8245 字节壳子——那次 gone-ok=True 是零节点造成的空洞为真，不算证据。
 
-## v1.19 GitHub Actions 构建 APK
+## v1.18 附录：GitHub Actions 构建 APK
 
 `.github/workflows/build-apk.yml`：手动 `workflow_dispatch` + 推 tag（`v*.*` / `v*.*.*` /
 `release-*`）自动构建，产物上传为 Release 附件。**数据库不在 CI 重建** ——
@@ -542,7 +542,7 @@ android-34 的 `android.jar`，不需要 `repo/`、`pydict/`、注译语料。
 版本号来源统一：`app/AndroidManifest.xml` 是 versionCode/versionName 的唯一来源，`build.sh` 从它
 读并显式传给 aapt2（原来写死 `--version-code 1 --version-name 1.0`，实际生效的一直是 manifest
 值，但那行读起来像它在做决定，且真生效就会造出自称 v1、无法覆盖升级的包）。tag 只做**一致性
-校验**、不当取值：`v1.19` 必须等于 `android:versionName`（容忍 `-rcN` 后缀），否则 CI 直接失败 ——
+校验**、不当取值：`v1.18` 这个 tag 必须等于 `android:versionName`（容忍 `-rcN` 后缀），否则 CI 直接失败 ——
 APK 里的版本来自 manifest，让 Release 标题另取一源就会让下载文件和页面说的是两个版本。
 
 `ci/check_release_tag.sh` 防的是：softprops/action-gh-release 会往**已存在**的 tag 上挂附件，
@@ -560,3 +560,20 @@ APK 里的版本来自 manifest，让 Release 标题另取一源就会让下载�
   才算签名对的）。sha256 与本机不同属正常：zip 里存了 mtime 与路径，构建不是逐字节可复现的。
 - 另外用 `git clone` 出来的干净副本跑过完整链（check_db → version → build → check_apk →
   SKIP_DEVICE verify），那份副本只有 `.gz`、没有 keystore，和 Actions 拿到的环境一致。
+
+补测的三条路径（run #4/#5，都是真实运行）：
+
+- **dispatch + 新 `ref_type` 逻辑**（run #4 success）：13 步里 Release 两步正确 skipped，
+  `Restore keystore` 由 skipped 转 success（两个 secret 配好之后）。
+- **dispatch + make_release**（run #5 failure，**符合预期**）：失败精确落在 `Check the release tag`，
+  报错 `tag v1.18 already exists and points at 2b9108b601, not at this build (111e191cbc...)` →
+  `Publishing here would attach this APK to an older release.`。仓库 Release 数仍是 1（v1.18 未被
+  污染）。这就是守卫存在的理由：softprops/action-gh-release 会往已存在 tag 上挂附件，没守卫的话
+  这次点击会把新 APK 塞进 v1.18 的附件列表，而那个 Release 标题承诺的是旧构建。
+- **tag 判定**：本地跑了六个上下文，关键是 `REF_TYPE=branch GITHUB_REF_NAME=v2-refactor` 现在
+  rc=0 且不再跑 tag 校验（旧逻辑按名字前缀猜，会把它当 tag 并报一句与用户操作无关的 tag 错误）。
+
+另记一处自己造的不一致：这段起初写成 `## v1.19`，但 CI 改动没动任何 app 代码、发的 Release 也是
+v1.18（manifest 一直 1.18），标个没发过的版本号会让下一个读的人去找不存在的发布。改回附录用法：
+工具链改动记在它所随的那个版本下，别为它单独 `versionCode` +1：dex 与 assets 都没变，
++1 只会让手机提示一次升级、装上一个行为完全相同的新包。

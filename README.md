@@ -131,16 +131,10 @@ JDK + aapt2 + android-34 的 `android.jar`，不需要 `repo/`、`pydict/`、注
 | `ci/check_apk.sh` | 从成品 APK 回读 versionCode/versionName、验签、比对 `assets/poetry.db.gz` 字节数 |
 | `ci/check_release_tag.sh` | tag 已存在却指向别的 commit 就失败（否则今天的 APK 会挂到旧 Release） |
 
-四个脚本都能在本地直接跑，且下面这条模拟流程验证过。
-
-签名已配好：仓库 secret `POETRY_KEYSTORE`（keystore 的 base64）与 `POETRY_KS_PASS`。
-run #3 产物的证书指纹与本机一致、`adb install -r` 覆盖升级成功，即钥匙正确。
-不配也能构建，但 `build.sh` 会新生成一把临时钥匙，产物**无法覆盖升级**已装的应用。换仓库时重配：
-
-```bash
-base64 -w0 app/release.keystore | gh secret set POETRY_KEYSTORE
-gh secret set POETRY_KS_PASS < <(echo poetry123)
-```
+`make_release` 什么时候会放行：`v<versionName>` 这个 tag **还不存在**，或者**已经正好指向当前
+commit**。否则守卫拦下（run #5 实测：在 main 上勾着它跑，失败落在 `Check the release tag`，
+报 `tag v1.18 already exists and points at 2b9108b6, not at this build`，仓库 Release 数没变）。
+这是有意的 —— action 会往已存在的 tag 上挂附件，那等于把新 APK 塞进旧版本的 Release。
 
 改版本号的地方是 `app/AndroidManifest.xml` 的 `versionCode` / `versionName`（`build.sh` 读它，
 不再自己写死）。发版顺序：改 manifest -> 提交 -> 打同版本 tag -> 推 tag。
