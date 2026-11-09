@@ -70,8 +70,9 @@ git clone ... && cd poetry && bash app/build.sh    # 产物 app/build/poetry.apk
 
 ## 签名密钥
 
-`app/release.keystore` **故意不入库**（`build.sh` 里密码是明文，仓库会被拷来拷去）。
-别名 `poetry`，store/key 密码同为 `poetry123`。丢了就无法覆盖升级，只能卸载重装。
+`app/release.keystore` **故意不入库**，口令也不入库（曾经在 `build.sh` 和本文里各存了一份明文，已移除）。
+别名 `poetry`，store/key 同一个口令，只存在本机 `/root/backup/ks_pass.txt`（600）与设备端，
+`build.sh` 通过 `POETRY_KS_PASS` 读取，未设置就直接报错。**丢了就无法覆盖升级，只能卸载重装。**丢了就无法覆盖升级，只能卸载重装。
 
 指纹：`sha256 4b095586867b49ad…`（`sha256sum` 前 16 位），PKCS12，1 个条目。
 

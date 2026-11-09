@@ -19,7 +19,10 @@ PLATFORM="${PLATFORM:-$SDK/platforms/android-34/android.jar}"
 OUT=$SRC/build
 GZ=$ROOT/out/poetry_lite.db.gz
 KS=$SRC/release.keystore
-KS_PASS="${POETRY_KS_PASS:-poetry123}"
+# No in-repo fallback on purpose: the literal used to live here (and in README), so anyone
+# who could read the repo could sign as us the moment a keystore leaked too. Set the env
+# var; CI supplies it from POETRY_KS_PASS, locally: POETRY_KS_PASS="$(cat ...)" ./build.sh
+KS_PASS="${POETRY_KS_PASS:?POETRY_KS_PASS must be set -- signing password, not stored in git}"
 
 rm -rf "$OUT"
 mkdir -p "$OUT/obj" "$OUT/dex" "$OUT/gen" "$OUT/apk"
