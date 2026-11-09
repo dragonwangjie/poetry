@@ -36,6 +36,15 @@ env:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    # Measured cost of a full run is ~45 s (six runs: 26-45 s), so 15 minutes is ~20x headroom.
+    # Without this the job gets GitHub's 360 minute default, and one hung sdkmanager would burn
+    # a sixth of a private repo's monthly free minutes before anything noticed.
+    timeout-minutes: 15
+    # Two runs racing to publish the same tag would both reach softprops/action-gh-release; queue
+    # them instead. Not cancelling means a release build never dies because someone pushed again.
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: false
     steps:
       # fetch-depth 0 so ci/check_release_tag.sh can compare an existing tag against this commit.
       - uses: actions/checkout@v4

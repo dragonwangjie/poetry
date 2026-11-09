@@ -17,6 +17,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# Cap for one sdkmanager round trip. A stalled download must fail the step, not eat the job.
+
+SDK_TIMEOUT="${SDK_TIMEOUT:-900}"
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 if [ -z "$SDK" ] || [ ! -d "$SDK" ]; then
   # Probe instead of demanding an export: /usr/local/lib/android/sdk is the runner image location,
@@ -36,7 +39,35 @@ install_pkg() {  # install_pkg <package>
   [ -n "$SDKMGR" ] || { echo "need $1 but there is no sdkmanager to fetch it"; exit 1; }
   echo "== installing $1 (licenses auto-accepted)"
   # `yes` answers the license prompts; sdkmanager otherwise blocks forever on a runner.
-  if ! yes | "$SDKMGR" --sdk_root="$SDK" "$1" >/tmp/sdk.log 2>&1; then tail -25 /tmp/sdk.log; exit 1; fi
+  #
+  # The exit code is taken from PIPESTATUS[1] (the timeout/sdkmanager end) on purpose.
+  # `if ! yes | sdkmanager` under `set -o pipefail` reports FAILURE even when the install worked:
+  # once sdkmanager exits, `yes` gets SIGPIPE and dies with 141, and pipefail promotes that to the
+  # pipeline status -- reproduced against a fake sdkmanager that installs successfully and exits 0
+  # (rc=1, stderr: "yes: standard output: Broken pipe"). pipefail is turned off just for this line
+  # rather than tolerated via `[ $rc = 141 ]`, because 141-as-success would also mask a sdkmanager
+  # killed by a signal.
+  # timeout wraps sdkmanager, not the pipeline: a stalled download would otherwise leave `yes`
+  # spinning on a blocked pipe for the job's whole life. 124 is timeout's own code.
+  local rc=0
+  # The pipe sits in an `if` on purpose: as a bare statement its non-zero status would trip
+  # `set -e` before rc could be read, so the diagnostics below never ran (reproduced with a fake
+  # sdkmanager that stalls: the script died with 124 and printed no message).
+  set +o pipefail
+  if yes | timeout "$SDK_TIMEOUT" "$SDKMGR" --sdk_root="$SDK" "$1" >/tmp/sdk.log 2>&1; then
+    rc=0
+  else
+    rc=${PIPESTATUS[1]}
+  fi
+  set -o pipefail
+  if [ "$rc" -ne 0 ]; then
+    tail -25 /tmp/sdk.log
+    case "$rc" in
+      124) echo "sdkmanager TIMED OUT after ${SDK_TIMEOUT}s installing $1" ;;
+      *) echo "sdkmanager failed with rc=$rc installing $1" ;;
+    esac
+    exit 1
+  fi
 }
 
 PLATFORM="$SDK/platforms/android-34/android.jar"
