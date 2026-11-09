@@ -66,6 +66,10 @@ jobs:
 
       - name: Resolve version
         id: ver
+        # ref_type decides "tag run or not" upstream of the script, so a branch whose name starts
+        # with v cannot be mistaken for a release tag inside ci/version.sh.
+        env:
+          REF_TYPE: ${{ github.ref_type }}
         run: bash ci/version.sh
 
       - name: Build APK
@@ -86,8 +90,10 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      # if: not always() -- with always() this fired on run #1 too, where the job died in SDK setup
+      # and never built anything, so it shouted about signing keys for a build that never happened.
       - name: Warn about a throwaway signing key
-        if: always()
+        if: success()
         run: |
           if [ ! -f app/release.keystore ]; then
             echo "::warning::no POETRY_KEYSTORE secret -- this APK was signed with a freshly generated key and cannot upgrade an existing install (uninstall first, or set the secret and rerun)"

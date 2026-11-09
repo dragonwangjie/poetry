@@ -18,10 +18,27 @@ VC=$(sed -n 's/.*android:versionCode="\([0-9]*\)".*/\1/p' "$MAN" | head -1)
 VN=$(sed -n 's/.*android:versionName="\([^"]*\)".*/\1/p' "$MAN" | head -1)
 [ -n "$VC" ] && [ -n "$VN" ] || { echo "cannot read versionCode/versionName from $MAN"; exit 1; }
 
-REF="${VERSION_TAG:-${GITHUB_REF_NAME:-}}"
+# Is THIS a tag run? Decide from the ref GitHub told us, never by pattern-matching the name: a
+# branch called v2-refactor starts with "v" too, and guessing would run the tag-vs-manifest check
+# on an ordinary branch push and fail it with a message about tags that has nothing to do with
+# what the user did. The workflow passes both values explicitly (ref_type is 'tag' or 'branch').
+REF_TYPE="${REF_TYPE:-${GITHUB_REF_TYPE:-}}"
+REF="${GITHUB_REF_NAME:-}"
+if [ "$REF_TYPE" = tag ]; then :
+elif [ -n "$REF_TYPE" ]; then REF=''      # branch run: no tag to check or reuse
+elif [ "${REF#release-}" != "$REF" ] || [ "${REF#v}" != "$REF" ]; then
+  # REF_TYPE unknown (running this script by hand): fall back to the naming convention, which is
+  # exactly what a person means when they set GITHUB_REF_NAME=v1.19 to try the check locally.
+  REF="$REF"
+else
+  REF=''
+fi
+
 TAG=''
-if [ "${REF#release-}" != "$REF" ]; then TAG="${REF#release-}";
-elif [ "${REF#v}" != "$REF" ]; then TAG="${REF#v}"; fi
+if [ -n "$REF" ]; then
+  if [ "${REF#release-}" != "$REF" ]; then TAG="${REF#release-}";
+  elif [ "${REF#v}" != "$REF" ]; then TAG="${REF#v}"; fi
+fi
 
 if [ -n "$TAG" ]; then
   # accept "1.19" and also "1.19-rc2" against a manifest that says 1.19
