@@ -587,3 +587,28 @@ run 的 `head_sha` 是否包含 X 那次提交**（`/actions/runs?per_page=N` �
 v1.18（manifest 一直 1.18），标个没发过的版本号会让下一个读的人去找不存在的发布。改回附录用法：
 工具链改动记在它所随的那个版本下，别为它单独 `versionCode` +1：dex 与 assets 都没变，
 +1 只会让手机提示一次升级、装上一个行为完全相同的新包。
+
+### `ci/setup_sdk.sh` 里 `install_pkg` 的两个 bug（本地才测试得到）
+
+这段在 CI 上**从未执行过**（runner 镜像预装的 SDK 已齐全，`[ -f android.jar ]` 直接为真），所以两个
+`set -o pipefail` / `set -e` 引出的错一直到本轮才被发现 —— 用假 `sdkmanager` 在本地跑出来的：
+
+1. **`yes | sdkmanager` 作为条件会把成功的安装判成失败**。sdkmanager 装完退出后，`yes` 收到
+   SIGPIPE 以 141 死亡，`pipefail` 取整条管道的最右非零码，于是 `if ! yes | sdkmanager` 走进失败分支。
+   复现：假 sdkmanager 正常建好产物并 `exit 0`，结果 rc=1、stderr `yes: standard output: Broken pipe`。
+   没有直接把 141 当成功放行，因为那样也会把被信号杀死的真 sdkmanager 误判为成功；改成临时
+   `set +o pipefail` 并只取右端 `${PIPESTATUS[1]}`。
+2. **`rc=${PIPESTATUS[1]}` 那一行根本没被执行**。上一版把管道写成裸语句，`set -e` 在它非零时直接终止，
+   于是失败/超时诊断永远是死代码（假 sdkmanager 卡住时脚本以 124 退出且**零输出**）。改成把管道放进
+   `if`：条件位置的命令不受 `set -e` 约束，失败后能进 `else` 读到 `PIPESTATUS[1]`。
+
+验证方式（不手抄代码，直接从脚本里抽出函数原文跑）：`install succeeds` rc=0、`sdkmanager exits 1`
+rc=1 且报 `failed with rc=1`、`stalls` rc=1 且报 `TIMED OUT after Ns`（N 现在跟着 `SDK_TIMEOUT` 变，
+不再是写死的 900）。写第一个假 sdkmanager 时自己踩了个坑：用 `cat >/dev/null` 读 stdin 会永远读完
+`yes` 的无限流、永不退出，三个用例全变 124 —— 换成 `head -c 4` 才有真 sdkmanager“读完协议就继续”的行为。
+
+顺手加了 `timeout-minutes: 15`（实测单次运行 26-45 s，默认值是 360 分钟，一次挂死的 sdkmanager
+能吃掉私有仓库月免额度的六分之一）和 `concurrency` 串行（两个运行同时到达发布步会重复发布）。
+验证 run #7：head `952d1e2` 与本地 HEAD 一致、39 s 完成、11 步 success + 2 步 skipped
+（`Check the release tag` 与 `Publish release` 在 dispatch 下本就该跳，不是漏跑）——
+这次先对了 `head_sha` 再说“验过”。
