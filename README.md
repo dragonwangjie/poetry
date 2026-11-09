@@ -70,36 +70,19 @@ git clone ... && cd poetry && bash app/build.sh    # 产物 app/build/poetry.apk
 
 ## 签名密钥
 
-`app/release.keystore` **故意不入库**，口令也不入库（曾经在 `build.sh` 和本文里各存了一份明文，已移除）。
-别名 `poetry`，store/key 同一个口令，只存在本机 `/root/backup/ks_pass.txt`（600）与设备端，
-`build.sh` 通过 `POETRY_KS_PASS` 读取，未设置就直接报错。**丢了就无法覆盖升级，只能卸载重装。**丢了就无法覆盖升级，只能卸载重装。
+`app/release.keystore` 故意不入库，口令也不入库（曾经在 `build.sh` 和本文里各存过一份明文，已移除）。别名 `poetry`，store/key 同一个口令，由 `build.sh` 通过 `POETRY_KS_PASS` 读取，未设置就直接报错。**丢了就无法覆盖升级，只能卸载重装。**
 
 指纹：`sha256 4b095586867b49ad…`（`sha256sum` 前 16 位），PKCS12，1 个条目。
 
-副本分布（只有 `secure-backup` 分支那份在机器之外）：
+分发原则：明文私钥只在构建机与口令文件里流转，`.gitignore` 已排除 `release.keystore` / `*.keystore` / `*.jks`。离线备份是同一文件的 AES-256-CBC（pbkdf2 200k）加密副本，解密口令**不进仓库任何分支**，请自行存进密码管理器，重装系统前先抄走。
 
-| 位置 | 形态 |
-|---|---|
-| `app/release.keystore` | 明文，构建用 |
-| `/sdcard/Download/release.keystore`、`/root/backup/release.keystore` | 明文，同一台机器 |
-| 私有仓库 `dragonwangjie/poetry` 分支 `secure-backup` 的 `release.keystore.enc` | AES-256-CBC / pbkdf2 200k |
-
-解密（口令不在仓库任何分支，本机存在 `/root/backup/keystore_backup_password.txt`，
-应另存进密码管理器；重装系统前务必先把它抄走）：
+解密：
 
 ```bash
 openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
   -in release.keystore.enc -out release.keystore -pass file:口令文件
 sha256sum release.keystore | head -c16   # 应为 4b095586867b49ad
 ```
-
-已实测：从 API 下载 → 解密 → sha 一致 → `keytool -list` 能打开。
-注意 `secure-backup` 是无父提交的孤立分支，`secure-backup` 的祖先里没有源码，
-`main` 里也搜不到任何 keystore 材料（都已核对）。
-
-新克隆的仓库里没有 keystore，而 `build.sh` 发现文件不存在会**静默生成一个新的**——包能装，
-但之后 `adb install -r` 会报签名不符，看着像装机问题、其实是签名换了。所以打包前先确认
-`app/release.keystore` 的 sha256 是上面那个值。
 
 ## 远端
 
